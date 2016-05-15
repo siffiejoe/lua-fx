@@ -254,9 +254,9 @@ static void curryf( lua_State* L, int n ) {
 }
 
 
-static void recurryf( lua_State* L, int idx, int n ) {
+static void recurryf( lua_State* L, int n ) {
   int req, rec, gaps, i, m;
-  idx = lua_absindex( L, idx );
+  int idx = lua_gettop( L );
   luaL_checkstack( L, 4, "curry" );
   lua_getupvalue( L, idx, 1 );
   lua_getupvalue( L, idx, 2 );
@@ -273,10 +273,9 @@ static void recurryf( lua_State* L, int idx, int n ) {
     for( i = 5; i <= rec+4; ++i )
       lua_getupvalue( L, idx, i );
     lua_pushcclosure( L, curried, rec+4 );
-  } else {
+    lua_replace( L, idx );
+  } else
     lua_pop( L, 4 );
-    lua_pushvalue( L, idx );
-  }
 }
 
 
@@ -287,7 +286,7 @@ static int curry( lua_State* L ) {
   check_callable( L, 2 );
   lua_settop( L, 2 );
   if( is_curried( L, 2 ) )
-    recurryf( L, 2, n );
+    recurryf( L, n );
   else
     curryf( L, n );
   return 1;
