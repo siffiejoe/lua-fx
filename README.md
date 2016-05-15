@@ -104,23 +104,27 @@ iteration, returning an updated state value that is then passed to the
 next call of the reducing function and finally returned as the result
 of `reduce`:
 
-    function aReducer( state, ... )
-      -- ...
-      return newState
-    end
+```lua
+function aReducer( state, ... )
+  -- ...
+  return newState
+end
+```
 
 A transducer is a function that takes a reducing function and returns
 another reducing function:
 
-    function aTransducer( aReducer )
-      return function( state, ... )
-        if p( ... ) then
-          return aReducer( state, f( ... ) )  -- pass (modified) data
-        else
-          return state  -- don't forward data
-        end
-      end
+```lua
+function aTransducer( aReducer )
+  return function( state, ... )
+    if p( ... ) then
+      return aReducer( state, f( ... ) )  -- pass (modified) data
+    else
+      return state  -- don't forward data
     end
+  end
+end
+```
 
 The new reducing function may forward the current iteration variables
 (modified or as-is) to the old reducing function, or it may instead
@@ -153,12 +157,13 @@ temporary copies of the iterated data structure.
     the lua-l mailing list.
 
     Example:
-
-        assert( fx.has"__index,__newindex"( t ) )
-        -- raises an error if `t` is either not a table or doesn't
-        -- have a metatable with __index and __newindex defined.
-        assert( fx.has"__add,__sub"( n ) )
-        -- works for numbers and objects with __add and __sub.
+    ```lua
+    assert( fx.has"__index,__newindex"( t ) )
+    -- raises an error if `t` is either not a table or doesn't
+    -- have a metatable with __index and __newindex defined.
+    assert( fx.has"__add,__sub"( n ) )
+    -- works for numbers and objects with __add and __sub.
+    ```
 
 
 *   `fx.curry( n, f ) ==> f2`
@@ -175,15 +180,16 @@ temporary copies of the iterated data structure.
     values in the argument list.
 
     Example:
-
-        local f = fx.curry( 3, print )
-        -- the following expressions are all equivalent:
-        f( 1, 2, 3 )
-        f( 1 )( 2 )( 3 )
-        f( 1, 2 )( 3 )
-        f( 1 )( 2, 3 )
-        f( fx._, 2 )( 1, 3 )
-        f( fx._, 2 )( fx._, 3 )( 1 )
+    ```lua
+    local f = fx.curry( 3, print )
+    -- the following expressions are all equivalent:
+    f( 1, 2, 3 )
+    f( 1 )( 2 )( 3 )
+    f( 1, 2 )( 3 )
+    f( 1 )( 2, 3 )
+    f( fx._, 2 )( 1, 3 )
+    f( fx._, 2 )( fx._, 3 )( 1 )
+    ```
 
 
 *   `fx._`
@@ -201,12 +207,13 @@ temporary copies of the iterated data structure.
     function.
 
     Example:
-
-        local f = fx.compose( g, h, i )
-        -- is equivalent to:
-        local function f( ... )
-          return g( h( i( ... ) ) )
-        end
+    ```lua
+    local f = fx.compose( g, h, i )
+    -- is equivalent to:
+    local function f( ... )
+      return g( h( i( ... ) ) )
+    end
+    ```
 
 
 *   `fx.map( fun, f [, s [, var]] ) ==> f2, s2, var2`
@@ -240,9 +247,11 @@ temporary copies of the iterated data structure.
     argument. This isn't very useful unless you use the placeholder
     value `fx._`:
 
-        fx.map( g )       --> returns transducer
-        fx.map( g, fx._ ) --> returns partially applied `fx.map` that
-                          --  awaits the `f` or `t` argument.
+    ```lua
+    fx.map( g )       --> returns transducer
+    fx.map( g, fx._ ) --> returns partially applied `fx.map` that
+                      --  awaits the `f` or `t` argument.
+    ```
 
     The returned transducer `x` is stateless unless `fun` maintains
     its own state, and returned iterators have the same properties
@@ -280,9 +289,11 @@ temporary copies of the iterated data structure.
     expected argument. This isn't very useful unless you use the
     placeholder value `fx._`:
 
-        fx.filter( p )       --> returns transducer
-        fx.filter( p, fx._ ) --> returns partially applied `fx.filter`
-                             --  that awaits the `f` or `t` argument.
+    ```lua
+    fx.filter( p )       --> returns transducer
+    fx.filter( p, fx._ ) --> returns partially applied `fx.filter`
+                         --  that awaits the `f` or `t` argument.
+    ```
 
     The returned transducer `x` is stateless unless `pred` maintains
     its own state, and returned iterators have the same properties
@@ -325,9 +336,11 @@ temporary copies of the iterated data structure.
     argument. This isn't very useful unless you use the placeholder
     value `fx._`:
 
-        fx.take( p )       --> returns transducer
-        fx.take( p, fx._ ) --> returns partially applied `fx.take`
-                           --  that awaits the `f` or `t` argument.
+    ```lua
+    fx.take( p )       --> returns transducer
+    fx.take( p, fx._ ) --> returns partially applied `fx.take`
+                       --  that awaits the `f` or `t` argument.
+    ```
 
     The returned transducer `x` is stateful, and the internal state is
     initialized when the transducer is applied to the final reducing
@@ -371,9 +384,11 @@ temporary copies of the iterated data structure.
     argument. This isn't very useful unless you use the placeholder
     value `fx._`:
 
-        fx.drop( p )       --> returns transducer
-        fx.drop( p, fx._ ) --> returns partially applied `fx.drop`
-                           --  that awaits the `f` or `t` argument.
+    ```lua
+    fx.drop( p )       --> returns transducer
+    fx.drop( p, fx._ ) --> returns partially applied `fx.drop`
+                       --  that awaits the `f` or `t` argument.
+    ```
 
     The returned transducer `x` is stateful, and the internal state is
     initialized when the transducer is applied to the final reducing
@@ -414,13 +429,15 @@ temporary copies of the iterated data structure.
 
     Example:
 
-        local appending = fx.curry( 2, function( n, state, ... )
-          state[ #state+1 ] = select( n, ... )
-          return state
-        end )
-        local function double( v ) return 2*v end
-        local xducer = fx.compose( fx.take( 5 ), fx.map( double ) )
-        local t2 = fx.reduce( xducer( appending( 1 ) ), {}, t1 )
+    ```lua
+    local appending = fx.curry( 2, function( n, state, ... )
+      state[ #state+1 ] = select( n, ... )
+      return state
+    end )
+    local function double( v ) return 2*v end
+    local xducer = fx.compose( fx.take( 5 ), fx.map( double ) )
+    local t2 = fx.reduce( xducer( appending( 1 ) ), {}, t1 )
+    ```
 
     This protocol of calling the transducer with the final reducing
     function right before passing it to `fx.reduce` is important for
@@ -435,7 +452,7 @@ temporary copies of the iterated data structure.
 
 ##                           Installation                           ##
 
-Compile the C source file `fx.c` into a shared library (`fx.so` or
+Compile the C source file `fx.c` into a shared library (`fx.so`, or
 `fx.dll` on Windows) as usual for your platform and put it somewhere
 into your Lua `package.cpath`.
 
