@@ -152,7 +152,7 @@ return setmetatable( {
   Lenses = Lenses,
   view = curry( 2, view ),
   over = curry( 3, over ),
-  set = curry( 2, set ),
+  set = curry( 3, set ),
   makeLens = makeLens,
   makeLenses = makeLenses,
 }, { __call = function( t )
