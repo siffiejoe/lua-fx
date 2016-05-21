@@ -1,9 +1,9 @@
 local assert = assert
+local error = assert( error )
 local tostring = assert( tostring )
 local setmetatable = assert( setmetatable )
 local require = assert( require )
 local F = require( "fx.functors" )
-local assert_is_a = assert( F.assert_is_a )
 local makeFunctor = assert( F.makeFunctor )
 local makeApplicative = assert( F.makeApplicative )
 
@@ -37,12 +37,12 @@ local cache = setmetatable( {}, { __mode = "k" } )
 
 -- return type constructor
 return function( t )
-  if t ~= nil and t.Monoid then
+  if t ~= nil and t.isMonoid then
     local M, C = cache[ t ]
     if not M then
       local cname = "Const<"..t.name..">"
+      local iscname = "is"..cname
       C, M = makeApplicative( cname )
-      C[ cname ] = true
       cache[ t ] = M
 
       setmetatable( C, {
@@ -60,7 +60,9 @@ return function( t )
       end
 
       function C:apply( f )
-        assert_is_a( f, cname )
+        if not f[ iscname ] then
+          error( cname .. " expected", 2 )
+        end
         return C( f:get():mappend( self:get() ) )
       end
     else

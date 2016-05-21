@@ -3,7 +3,6 @@ local tostring = assert( tostring )
 local setmetatable = assert( setmetatable )
 local require = assert( require )
 local F = require( "fx.functors" )
-local assert_is_a = assert( F.assert_is_a )
 local makeMonoid = assert( F.makeMonoid )
 local _, Nothing = require( "fx.functors.maybe" )()
 
@@ -13,7 +12,7 @@ local First, Meta = makeMonoid( "First" )
 
 setmetatable( First, {
   __call = function( _, v )
-    assert_is_a( v, "Maybe" )
+    assert( v.isMaybe, "Maybe expected" )
     return setmetatable( { v }, Meta )
   end
 } )

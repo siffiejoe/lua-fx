@@ -3,12 +3,11 @@ local tostring = assert( tostring )
 local setmetatable = assert( setmetatable )
 local require = assert( require )
 local F = require( "fx.functors" )
-local assert_is_a = assert( F.assert_is_a )
 local makeMonad = assert( F.makeMonad )
 
 
 local None, NMeta = makeMonad( "Nothing" )
-None.Maybe = true
+None.isMaybe = true
 
 
 -- singleton Nothing value
@@ -27,7 +26,7 @@ end
 
 
 local Just, JMeta = makeMonad( "Just" )
-Just.Maybe = true
+Just.isMaybe = true
 
 
 setmetatable( Just, {
@@ -64,7 +63,7 @@ Just.pure, None.pure = pure, pure
 
 
 local function apply( self, f )
-  assert_is_a( f, "Maybe" )
+  assert( f.isMaybe, "Maybe expected" )
   if self == Nothing or f == Nothing then
     return Nothing
   else

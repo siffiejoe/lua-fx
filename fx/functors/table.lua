@@ -4,7 +4,6 @@ local select = assert( select )
 local setmetatable = assert( setmetatable )
 local require = assert( require )
 local F = require( "fx.functors" )
-local assert_is_a = assert( F.assert_is_a )
 local makeMonad = assert( F.makeMonad )
 local makeMonoid = assert( F.makeMonoid )
 
@@ -44,7 +43,7 @@ end
 
 
 function Table:apply( f )
-  assert_is_a( f, "Table" )
+  assert( f.isTable, "Table expected" )
   local n, m = #self, #f
   if n < 1 then
     return self
@@ -86,7 +85,7 @@ end
 
 
 function Table:mappend( other )
-  assert_is_a( other, "Table" )
+  assert( other.isTable, "Table expected" )
   local n, m = #self, #other
   if n < 1 then
     return other

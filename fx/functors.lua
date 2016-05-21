@@ -13,13 +13,16 @@ local compose = assert( fx.compose )
 local metatables = setmetatable( {}, { __mode = "k" } )
 
 
-local function gettype( name )
+local function makeType( name )
   local mt, t = metatables[ name ]
   if mt then
     t = mt.__index
   else
-    t = { name = name }
-    mt = { __index = t }
+    t = { name = name, [ "is"..name ] = true }
+    function t:switch( alt, ... )
+      return alt[ name ]( self, ... )
+    end
+    mt = { __index = t, __name = name }
     metatables[ name ] = mt
   end
   return t, mt
@@ -44,23 +47,10 @@ local function bind_operator( v, f )
 end
 
 
-local function is_a( v, tn )
-  return type( v ) == "table" and v[ tn ] == true
-end
-
-local function assert_is_a( v, tn )
-  if type( v ) ~= "table" or v[ tn ] ~= true then
-    error( tn.." expected", 2 )
-  end
-end
-
-
-
 local function makeMonoid( name )
-  local t, mt = gettype( name )
-  if not t.Monoid then
-    t[ name ] = true
-    t.Monoid = true
+  local t, mt = makeType( name )
+  if not t.isMonoid then
+    t.isMonoid = true
     t.mempty = pure_virtual
     t.mappend = pure_virtual
   end
@@ -69,10 +59,9 @@ end
 
 
 local function makeFunctor( name )
-  local t, mt = gettype( name )
-  if not t.Functor then
-    t[ name ] = true
-    t.Functor = true
+  local t, mt = makeType( name )
+  if not t.isFunctor then
+    t.isFunctor = true
     t.fmap = pure_virtual
     mt.__mod = fmap_operator
     mt[ "__map@fx" ] = map_metamethod
@@ -86,11 +75,12 @@ local function applicative_default_fmap( self, f )
 end
 
 local function makeApplicative( name )
-  local t, mt = gettype( name )
-  if not t.Applicative then
-    t[ name ] = true
-    t.Functor, t.Applicative = true, true
-    t.fmap = applicative_default_fmap
+  local t, mt = makeType( name )
+  if not t.isApplicative then
+    t.isFunctor, t.isApplicative = true, true
+    if t.fmap == nil or t.fmap == pure_virtual then
+      t.fmap = applicative_default_fmap
+    end
     mt.__mod = fmap_operator
     mt[ "__map@fx" ] = map_metamethod
     t.pure = pure_virtual
@@ -105,22 +95,25 @@ local function monad_default_fmap( self, f )
 end
 
 local function monad_default_apply( self, f )
-  assert_is_a( f, "Monad" )
+  assert( f.isMonad, "Monad expected" )
   return f:bind( function( g )
     return self:fmap( g )
   end )
 end
 
 local function makeMonad( name )
-  local t, mt = gettype( name )
-  if not t.Monad then
-    t[ name ] = true
-    t.Functor, t.Applicative, t.Monad = true, true, true
-    t.fmap = monad_default_fmap
+  local t, mt = makeType( name )
+  if not t.isMonad then
+    t.isFunctor, t.isApplicative, t.isMonad = true, true, true
+    if t.fmap == nil or t.fmap == pure_virtual then
+      t.fmap = monad_default_fmap
+    end
     mt.__mod = fmap_operator
     mt[ "__map@fx" ] = map_metamethod
-    t.pure = pure_virtual
-    t.apply = monad_default_apply
+    if t.pure == nil then t.pure = pure_virtual end
+    if t.apply == nil or t.apply == pure_virtual then
+      t.apply = monad_default_apply
+    end
     t.bind = pure_virtual
     mt.__div = bind_operator
   end
@@ -129,24 +122,39 @@ end
 
 
 local function fmap( f, v )
-  assert_is_a( v, "Functor" )
+  assert( v.isFunctor, "Functor expected" )
   return v:fmap( f )
 end
 
 local function apply( f, v )
-  assert_is_a( v, "Applicative" )
+  assert( v.isApplicative, "Applicative functor expected" )
   return v:apply( f )
 end
 
 local function bind( f, v )
-  assert_is_a( v, "Monad" )
+  assert( v.isMonad, "Monad expected" )
   return v:bind( f )
 end
 
+local function lift2( f, a, b )
+  assert( a.isApplicative, "Applicative functor expected" )
+  return a:fmap( curry( 2, f ) ):apply( b )
+end
+
+local function lift3( f, a, b, c )
+  assert( a.isApplicative, "Applicative functor expected" )
+  return a:fmap( curry( 3, f ) ):apply( b ):apply( c )
+end
+
+local function lift4( f, a, b, c, d )
+  assert( a.isApplicative, "Applicative functor expected" )
+  return a:fmap( curry( 4, f ) ):apply( b ):apply( c ):apply( d )
+end
 
 -- return module table
 return {
   -- type constructors
+  makeType = makeType,
   makeMonoid = makeMonoid,
   makeFunctor = makeFunctor,
   makeApplicative = makeApplicative,
@@ -155,8 +163,8 @@ return {
   fmap = curry( 2, fmap ),
   apply = curry( 2, apply ),
   bind = curry( 2, bind ),
-  -- other helper functions
-  is_a = is_a,
-  assert_is_a = assert_is_a,
+  lift2 = curry( 3, lift2 ),
+  lift3 = curry( 4, lift3 ),
+  lift4 = curry( 5, lift4 ),
 }
 

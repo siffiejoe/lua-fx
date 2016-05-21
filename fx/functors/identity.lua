@@ -3,7 +3,6 @@ local tostring = assert( tostring )
 local setmetatable = assert( setmetatable )
 local require = assert( require )
 local F = require( "fx.functors" )
-local assert_is_a = assert( F.assert_is_a )
 local makeMonad = assert( F.makeMonad )
 
 
@@ -38,7 +37,7 @@ end
 
 
 function Identity:apply( f )
-  assert_is_a( f, "Identity" )
+  assert( f.isIdentity, "Identity expected" )
   return Identity( f:get()( self:get() ) )
 end
 

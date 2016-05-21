@@ -3,7 +3,6 @@ local tostring = assert( tostring )
 local setmetatable = assert( setmetatable )
 local require = assert( require )
 local F = require( "fx.functors" )
-local assert_is_a = assert( F.assert_is_a )
 local makeMonoid = assert( F.makeMonoid )
 
 
@@ -35,7 +34,7 @@ end
 
 
 function Endo:mappend( other )
-  assert_is_a( other, "Endo" )
+  assert( other.isEndo, "Endo expected" )
   local sf, of = self:get(), other:get()
   return Endo( function( ... )
     return sf( of( ... ) )

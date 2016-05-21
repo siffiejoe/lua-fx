@@ -3,7 +3,6 @@ local select = assert( select )
 local setmetatable = assert( setmetatable )
 local require = assert( require )
 local F = require( "fx.functors" )
-local assert_is_a = assert( F.assert_is_a )
 local makeMonad = assert( F.makeMonad )
 local makeMonoid = assert( F.makeMonoid )
 
@@ -86,7 +85,7 @@ end
 
 
 function List:apply( f )
-  assert_is_a( f, "List" )
+  assert( f.isList, "List expected" )
   local lst, newlst, lp = self, Nil, nil
   while f ~= Nil do
     while lst ~= Nil do
@@ -129,7 +128,7 @@ end
 
 
 function List:mappend( other )
-  assert_is_a( other, "List" )
+  assert( other.isList, "List expected" )
   if self ~= Nil then
     local lst, newlst, lp = self, (Nil:cons( self[ 1 ] ))
     lp, lst = newlst, lst[ 2 ]
