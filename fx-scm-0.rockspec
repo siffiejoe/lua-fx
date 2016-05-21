@@ -25,6 +25,7 @@ build = {
     ["fx.functors.either"]   = "fx/functors/either.lua",
     ["fx.functors.endo"]     = "fx/functors/endo.lua",
     ["fx.functors.first"]    = "fx/functors/first.lua",
+    ["fx.functors.free"]     = "fx/functors/free.lua",
     ["fx.functors.identity"] = "fx/functors/identity.lua",
     ["fx.functors.maybe"]    = "fx/functors/maybe.lua",
     ["fx.functors.table"]    = "fx/functors/table.lua",

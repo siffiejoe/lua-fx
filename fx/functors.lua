@@ -1,5 +1,4 @@
 local assert = assert
-local type = assert( type )
 local error = assert( error )
 local setmetatable = assert( setmetatable )
 local require = assert( require )
@@ -138,17 +137,17 @@ end
 
 local function lift2( f, a, b )
   assert( a.isApplicative, "Applicative functor expected" )
-  return a:fmap( curry( 2, f ) ):apply( b )
+  return b:apply( a:fmap( curry( 2, f ) ) )
 end
 
 local function lift3( f, a, b, c )
   assert( a.isApplicative, "Applicative functor expected" )
-  return a:fmap( curry( 3, f ) ):apply( b ):apply( c )
+  return c:apply( b:apply( a:fmap( curry( 3, f ) ) ) )
 end
 
 local function lift4( f, a, b, c, d )
   assert( a.isApplicative, "Applicative functor expected" )
-  return a:fmap( curry( 4, f ) ):apply( b ):apply( c ):apply( d )
+  return d:apply( c:apply( b:apply( a:fmap( curry( 4, f ) ) ) ) )
 end
 
 -- return module table

@@ -1,6 +1,5 @@
 local assert = assert
 local error = assert( error )
-local select = assert( select )
 local setmetatable = assert( setmetatable )
 local require = assert( require )
 local F = require( "fx.functors" )
@@ -11,7 +10,7 @@ local makeMonoid = assert( F.makeMonoid )
 local Table, Meta = makeMonad( "Table" )
 makeMonoid( "Table" )
 
-function Meta:__newindex()
+function Meta.__newindex()
   error( "Table is supposed to be immutable", 2 )
 end
 
