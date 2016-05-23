@@ -19,7 +19,11 @@ local function makeType( name )
   else
     t = { name = name, [ "is"..name ] = true }
     function t:switch( alt, ... )
-      return alt[ name ]( self, ... )
+      local f = alt[ name ]
+      if not f then
+        error( "unhandled type '"..name.."'", 2 )
+      end
+      return f( self, ... )
     end
     mt = { __index = t, __name = name }
     metatables[ name ] = mt
@@ -39,6 +43,10 @@ end
 
 local function fmap_operator( v, f )
   return v:fmap( f )
+end
+
+local function apply_operator( f, v )
+  return v:apply( f )
 end
 
 local function bind_operator( v, f )
@@ -84,6 +92,7 @@ local function makeApplicative( name )
     mt[ "__map@fx" ] = map_metamethod
     t.pure = pure_virtual
     t.apply = pure_virtual
+    mt.__mul = apply_operator
   end
   return t, mt
 end
@@ -113,6 +122,7 @@ local function makeMonad( name )
     if t.apply == nil or t.apply == pure_virtual then
       t.apply = monad_default_apply
     end
+    mt.__mul = apply_operator
     t.bind = pure_virtual
     mt.__div = bind_operator
   end

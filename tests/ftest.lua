@@ -142,7 +142,7 @@ local function add3( a, b, c ) return a + b + c end
 local function add4( a, b, c, d ) return a + b + c + d end
 
 print( F.apply( Just( 3 ) % mul, Just( 5 ) ) )
-print( runOption( F.apply( some( 3 ) % mul, some( 5 ) ) ) )
+print( runOption( some( 3 ) % mul * some( 5 ) ) )
 print( runOption( F.lift2( add, some( 3 ), some( 5 ) ) ) )
 print( runOption( F.lift3( add3, some( 1 ), some( 2 ), some( 3 ) ) ) )
 print( runOption( F.lift3( add3, some( 1 ), none, some( 3 ) ) ) )
@@ -157,7 +157,7 @@ io.write( "\n" )
 
 local ft = Table{ mul( 2 ), add( 1 ) }
 local nt = Table.mappend( Table{ 3, 2, 1 }, Table{ 0 } )
-local rt = F.apply( ft, nt )
+local rt = ft * nt
 for _,v in ipairs( rt ) do io.write( v, "  " ) end
 io.write( "\n" )
 
