@@ -93,7 +93,7 @@ local D = {
 }
 
 
-local firstAddressStreet = compose( map( string.upper, fx._ ),
+local firstAddressStreet = compose( map( string.upper ),
                                     F.bind( get"street" ),
                                     F.bind( head ),
                                     F.bind( get"addresses" ) )

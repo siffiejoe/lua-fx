@@ -83,28 +83,6 @@ local each = curry( 2, function( f, ft, ... )
 end )
 
 
-local function cloneiterator( f, s, var )
-  if getmetatable( s ) == "cloneable" then s = s() end
-  return f, s, var
-end
-
-local function X( f, s, var )
-  local n = 0
-  return function( s, v )
-    n = n + 1
-    if n == N then
-      stored[ 1 ], stored[ 2 ], stored[ 3 ] = cloneiterator( f, s, v )
-    end
-    return f( s, v )
-  end, s, var
-end
-
-local function replay( func )
-  print( PREFIX, "replay!", PREFIX )
-  each( func or print, unpack( stored ) )
-end
-
-
 local function __________()
   print( ("="):rep( 70 ) )
 end
@@ -204,8 +182,6 @@ local t = { 1, 2, 3, 6, 8, 12, 14 }
 local function doublep( v, w ) return 2*v+w end
 local function double2( _, v ) return 2*v end
 print_array( map( doublep, t, 1 ) )
-each( print, X( map( double2, ipairs( t ) ) ) )
-replay()
 local function doublepy( v, w )
   print( coroutine.yield( "function yield" ) )
   return 2*v+w
@@ -217,13 +193,6 @@ end
 resume_x( function( ... )
   print( ... )
   print_array( map( doublepy, t, 2 ) )
-  return "return"
-end )
-resume_x( function( ... )
-  print( ... )
-  for k,v in map( double2y, yielding_iterator( 3 ) ) do
-    print( "map", k, v )
-  end
   return "return"
 end )
 local function inc( x, v ) return x+v end
@@ -247,11 +216,6 @@ resume_x( function( ... )
   print_array( xduce( ydp, appending( 1 ), {}, t, 1 ) )
   return "return"
 end )
-resume_x( function( ... )
-  print( ... )
-  print_array( xduce( yd2, appending( 1 ), {}, yielding_iterator( 3 ) ) )
-  return "return"
-end )
 __________()
 
 
@@ -264,8 +228,6 @@ local function isodd2( _, v )
   return v % 2 == 1
 end
 print_array( filter( hasremainder, t, 2, 0 ) )
-each( print, X( filter( isodd2, ipairs( t ) ) ) )
-replay()
 local function hasremaindery( v, d, r )
   print( coroutine.yield( "function yield" ) )
   return v % d == r
@@ -277,13 +239,6 @@ end
 resume_x( function( ... )
   print( ... )
   print_array( filter( hasremaindery, t, 2, 1 ) )
-  return "return"
-end )
-resume_x( function( ... )
-  print( ... )
-  for k,v in filter( isodd2y, yielding_iterator( 5 ) ) do
-    print( "filter", k, v )
-  end
   return "return"
 end )
 print_array( xduce( filter( hasremainder ), appending( 1 ), {}, t, 2, 0 ) )
@@ -304,20 +259,7 @@ __________()
 
 
 print( "fx.take() ..." )
-print( "taking first 3 values (take-n)" )
-each( print, X( take( 3, ipairs( letters ) ) ) )
-replay()
-print( "taking first 3 values (take-while)" )
 local function lt_4( _, v ) return v < 4 end
-each( print, X( take( lt_4, ipairs( numbers ) ) ) )
-replay()
-resume_x( function( ... )
-  print( ... )
-  for a,b in take( 3, yielding_iterator( 10 ) ) do
-    print( "take", a, b )
-  end
-  return "return"
-end )
 local function lt_y( v, x )
   print( coroutine.yield( "function yield" ) )
   return v < x
@@ -348,19 +290,6 @@ __________()
 
 
 print( "fx.drop() ..." )
-print( "dropping first 3 values (drop-n)" )
-each( print, X( drop( 3, ipairs( letters ) ) ) )
-replay()
-print( "dropping first 3 values (drop-while)" )
-each( print, X( drop( lt_4, ipairs( numbers ) ) ) )
-replay()
-resume_x( function( ... )
-  print( ... )
-  for a,b in drop( 3, yielding_iterator( 6 ) ) do
-    print( "drop", a, b )
-  end
-  return "return"
-end )
 print_array( drop( 3, letters ) )
 resume_x( function( ... )
   print( ... )
@@ -413,27 +342,6 @@ resume_x( function( ... )
   print( "sum", reduce( yielding_add2, 0, yielding_iterator( 3 ) ) )
   return "return"
 end )
-__________()
-
-
-print( "Composing crazy stuff ..." )
-local lt = curry( 3, function( i, v, ... )
-  local w = select( i, ... )
-  return w < v
-end )
-local out = compose( map( fx._, fx._ ), curry( 2, function( prefix, x, ... )
-  print( prefix, x, ... )
-  return ...
-end ) )
-local f = compose( each( print ),
-                   --out">>>",
-                   take( 2, fx._ ),
-                   drop( 2, fx._ ),
-                   --out"|||",
-                   filter( lt( 2, 6 ), fx._ ),
-                   --out"@@@",
-                   ipairs )
-f{ 1, 2, 3, 4, 5, 6, 7, 8 }
 __________()
 
 
