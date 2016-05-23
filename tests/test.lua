@@ -90,6 +90,14 @@ end
 
 __________()
 
+local ft = {}
+print( "fx", fx( ft ), fx )
+for k,v in pairs( ft ) do
+  print( k, v )
+end
+__________()
+
+
 print( "fx.curry() ..." )
 print( fx._, _G._ )
 local f = curry( 3, function( a, b, c )

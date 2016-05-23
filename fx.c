@@ -116,6 +116,7 @@ static char const mark[ 1 ];
 #endif
 
 
+
 static int curried( lua_State* L );
 
 LUA_KFUNCTION( curriedk ) {
@@ -517,7 +518,7 @@ LUA_KFUNCTION( map_reducerk ) {
     case 1: /* reducer, state, r_1, ... r_n */
       lua_callk( L, lua_gettop( L )-1, LUA_MULTRET, 2, map_reducerk );
   }
-  return lua_gettop( L );;
+  return lua_gettop( L );
 }
 
 static int map_reducer( lua_State* L ) {
@@ -1031,9 +1032,11 @@ static int reduce( lua_State* L ) {
 
 
 static int export( lua_State* L ) {
-  int top = lua_gettop( L );
   luaL_checktype( L, 1, LUA_TTABLE );
-  lua_pushglobaltable( L );
+  if( lua_istable( L, 2 ) )
+    lua_settop( L, 2 );
+  else
+    lua_pushglobaltable( L );
   lua_pushnil( L );
   while( lua_next( L, 1 ) ) {
     if( lua_type( L, -2 ) == LUA_TSTRING &&
@@ -1042,7 +1045,7 @@ static int export( lua_State* L ) {
     } else {
       lua_pushvalue( L, -2 );
       lua_insert( L, -2 );
-      lua_settable( L, top+1 );
+      lua_settable( L, -4 );
     }
   }
   lua_settop( L, 1 );
