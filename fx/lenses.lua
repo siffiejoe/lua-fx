@@ -155,11 +155,12 @@ return setmetatable( {
   set = curry( 3, set ),
   makeLens = makeLens,
   makeLenses = makeLenses,
-}, { __call = function( t )
-  _G.view = t.view
-  _G.over = t.over
-  _G.set = t.set
-  _G.makeLenses = t.makeLenses
-  return t
+}, { __call = function( M, t )
+  t = t or _G
+  t.view = M.view
+  t.over = M.over
+  t.set = M.set
+  t.makeLenses = M.makeLenses
+  return M
 end } )
 

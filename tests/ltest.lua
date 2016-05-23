@@ -2,7 +2,7 @@
 
 package.path = "../?.lua;"..package.path
 require( "fx" )()
-require( "fx.lenses" )()
+local lenses = require( "fx.lenses" )()
 local serpent = require( "serpent" )
 
 
@@ -76,6 +76,12 @@ end
 local L = makeLenses( "friends", "email", "name", "sex", "foo" )
 
 -- query/modify data structure:
+local t = {}
+print( "fx.lenses", lenses( t ), lenses )
+for k, v in pairs( t ) do
+  print( k, v )
+end
+print( ("-"):rep( 70 ) )
 p( "query name", view( L.name, user ) )
 p( "query friends", view( L.friends, user ) )
 p( "modify name", over( L.name, replace( "E", "***" ), user ) )
