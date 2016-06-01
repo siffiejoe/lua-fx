@@ -284,6 +284,77 @@ temporary copies of the iterated data structure.
   [3]: http://lua-users.org/lists/lua-l/2013-05/msg00426.html
 
 
+###                         Glue Functions                         ###
+
+Unlike many functional programming languages, Lua supports multiple
+return values. This makes composing functions more powerful, but it
+also increases the chances of a mismatch between what one function
+provides and the next one expects. The `fx.glue` module provides glue
+functions that transform argument or return value lists. It is similar
+in scope to the [`vararg`][4] module, but since it is intended to be
+used with `compose`, the glue functions in this module create closures
+that do the actual vararg manipulation.
+
+The following glue functions are provided:
+
+*   `vmap( f1 [, f2 [, ..., fn]] ) ==> f`
+
+    Returns a glue function that applies `f1` to `select( 1, ... )`
+    to create the first return value, `f2` to `select( 2, ... )` to
+    create the second return value, and so on. The last `fn` may
+    return multiple values as usual.
+
+*   `vdup( idx [, n] ) ==> f`
+
+    Returns a glue function that duplicates `n` elements at index
+    `idx`. The duplicated elements are inserted right before `idx`.
+    The default value of `n` is `1`.
+
+*   `vinsert( idx, v, ... ) ==> f`
+
+    Returns a glue function that inserts all values `v, ...` before
+    index `idx`. Using `nil` as `idx` will append to the vararg list.
+
+*   `vremove( idx [, n] ) ==> f`
+
+    Returns a glue function that removes the `n` arguments starting at
+    index `idx`. `n` defaults to `1`.
+
+*   `vreplace( idx, v, ... ) ==> f`
+
+    Returns a glue function that replaces the arguments starting at
+    index `idx` with the values `v, ...`.
+
+*   `vreverse( [idx1 [, idx2]] ) ==> f`
+
+    Returns a glue function that reverses all arguments between the
+    indices `idx1` and `idx2` (inclusive). `idx1` defaults to `1`, and
+    `idx2` defaults to `-1` (the last argument).
+
+*   `vrotate( [idx [, n]] ) ==> f`
+
+    Returns a glue function that right shifts all arguments starting
+    at index `idx1` by `n` positions, reinserting the values that fall
+    off at the beginning. `n` may be negative (to do a left shift) and
+    defaults to `1`. `idx` defaults to `1` as well. (This is basically
+    an interface to the `lua_rotate()` API function.)
+
+*   `vtake( n ) ==> f`
+
+    Returns a glue function that expands/shrinks the argument list to
+    exactly `n` elements. This is basically an interface to the
+    `lua_settop()` API function, but negative numbers are also
+    supported to specify sizes relative to the current number of
+    arguments.
+
+*   `vnot( idx ) ==> f`
+
+    Returns a glue function that applies the boolean `not` operation
+    on the argument specified by `idx`.
+
+  [4]: https://github.com/moteus/lua-vararg
+
+
 ##                           Installation                           ##
 
 Compile the C source file `fx.c` into a shared library (`fx.so`, or

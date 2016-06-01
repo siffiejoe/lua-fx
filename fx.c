@@ -52,6 +52,28 @@ typedef int lua_KContext;
 #endif
 
 
+#if LUA_VERSION_NUM < 503
+
+static void reverse( lua_State*, int, int );
+
+/* idx must be positive for this implementation! */
+static void lua_rotate( lua_State* L, int idx, int n ) {
+  int n_elems = 0;
+  n_elems = lua_gettop( L )-idx+1;
+  if( n < 0 )
+    n += n_elems;
+  if( n > 0 && n < n_elems ) {
+    luaL_checkstack( L, 2, "lua_rotate" );
+    n = n_elems - n;
+    reverse( L, idx, idx+n-1 );
+    reverse( L, idx+n, idx+n_elems-1 );
+    reverse( L, idx, idx+n_elems-1 );
+  }
+}
+
+#endif /* LUA_VERSION_NUM < 503 */
+
+
 
 static int is_sequence( lua_State* L, int i ) {
   switch( lua_type( L, i ) ) {
@@ -86,6 +108,53 @@ static int is_callable( lua_State* L, int i ) {
 #define check_callable( L, i ) \
   (luaL_argcheck( L, is_callable( L, i ), i, \
                   "function or callable userdata/table expected" ))
+
+
+static int check_index( lua_State* L, int idx ) {
+  lua_Integer i = luaL_checkinteger( L, idx );
+  luaL_argcheck( L, i >= INT_MIN && i <= INT_MAX && i != 0, idx,
+                 "invalid index" );
+  return i;
+}
+#define opt_index( L, idx, def ) (luaL_opt( L, check_index, idx, def ))
+
+
+static int check_int( lua_State* L, int idx ) {
+  lua_Integer i = luaL_checkinteger( L, idx );
+  luaL_argcheck( L, i >= INT_MIN && i <= INT_MAX, idx,
+                "invalid 'n'" );
+  return i;
+}
+#define opt_int( L, idx, def ) (luaL_opt( L, check_int, idx, def ))
+
+
+static int check_uint( lua_State* L, int idx ) {
+  lua_Integer i = luaL_checkinteger( L, idx );
+  luaL_argcheck( L, i >= 0 && i <= INT_MAX, idx,
+                "invalid 'n'" );
+  return i;
+}
+#define opt_uint( L, idx, def ) (luaL_opt( L, check_uint, idx, def ))
+
+
+static int get_index( lua_State* L, int uvidx ) {
+  int idx = lua_tointeger( L, lua_upvalueindex( uvidx ) );
+  if( idx <= 0 )
+    idx += lua_gettop( L )+1;
+  if( idx <= 0 )
+    luaL_error( L, "index out of bounds" );
+  return idx;
+}
+
+
+static void reverse( lua_State* L, int a, int b ) {
+  for( ; a < b; ++a, --b ) {
+    lua_pushvalue( L, a );
+    lua_pushvalue( L, b );
+    lua_replace( L, a );
+    lua_replace( L, b );
+  }
+}
 
 
 /* unique addresses used as IDs/markers */
@@ -129,7 +198,7 @@ LUA_KFUNCTION( curriedk ) {
       m = lua_tointeger( L, lua_upvalueindex( 3 ) );
       g = lua_tointeger( L, lua_upvalueindex( 4 ) );
       k = lua_gettop( L );
-      luaL_checkstack( L, k+m+5, "curried" );
+      luaL_checkstack( L, k+m+5+LUA_MINSTACK, "curried" );
       lua_pushvalue( L, lua_upvalueindex( 1 ) );
       lua_pushnil( L ); /* placeholders */
       lua_pushnil( L ); /* ... */
@@ -238,7 +307,7 @@ LUA_KFUNCTION( composedk ) {
   switch( ctx ) {
     case 0:
       t = lua_gettop( L );
-      luaL_checkstack( L, n+t+2, "composed" );
+      luaL_checkstack( L, n+t+2+LUA_MINSTACK, "composed" );
       if( t < 2 ) /* make room for control block */
         lua_settop( L, 2 );
       /* push functions */
@@ -546,7 +615,7 @@ LUA_KFUNCTION( mapk ) {
         nx = lua_gettop( L )-2;
         lua_pushinteger( L, 1 ); /* store current iteration index */
         lua_newtable( L ); /* result table */
-        luaL_checkstack( L, nx+2, "map" );
+        luaL_checkstack( L, nx+2+LUA_MINSTACK, "map" );
         do { /* func, array, x_1, ..., x_n, i, res */
           lua_pushvalue( L, 1 );
           lua_pushvalue( L, -3 );
@@ -587,7 +656,7 @@ LUA_KFUNCTION( filter_reducerk ) {
       lua_pushvalue( L, lua_upvalueindex( 2 ) );
       lua_insert( L, 1 ); /* reducer, state, x_1, ... x_n */
       lua_pushvalue( L, lua_upvalueindex( 1 ) );
-      luaL_checkstack( L, nargs, "filter transducer" );
+      luaL_checkstack( L, nargs+LUA_MINSTACK, "filter transducer" );
       for( i = 3; i <= nargs+2; ++i )
         lua_pushvalue( L, i );
       lua_callk( L, nargs, 1, 1, filter_reducerk );
@@ -625,7 +694,7 @@ LUA_KFUNCTION( filterk ) {
         lua_pushinteger( L, 1 ); /* store current iteration index */
         lua_newtable( L ); /* result table */
         lua_pushinteger( L, 1 ); /* store current target index */
-        luaL_checkstack( L, nx+3, "filter" );
+        luaL_checkstack( L, nx+3+LUA_MINSTACK, "filter" );
         do { /* pred, array, x_1, ..., x_n, i, res, j */
           lua_pushvalue( L, -3 );
           lua_gettable( L, 2 );
@@ -675,7 +744,8 @@ LUA_KFUNCTION( take_while_reducerk ) {
       lua_insert( L, 1 );
       lua_pushvalue( L, lua_upvalueindex( 1 ) );
       if( !lua_isnil( L, -1 ) ) {
-        luaL_checkstack( L, nargs, "take (while) transducer" );
+        luaL_checkstack( L, nargs+LUA_MINSTACK,
+                         "take (while) transducer" );
         for( i = 3; i <= nargs+2; ++i )
           lua_pushvalue( L, i );
         lua_callk( L, nargs, 1, 1, take_while_reducerk );
@@ -746,7 +816,7 @@ LUA_KFUNCTION( takek ) {
           lua_pushinteger( L, 1 ); /* store current iteration index */
           lua_newtable( L ); /* result table */
           lua_pushinteger( L, 1 ); /* store current target index */
-          luaL_checkstack( L, nx+3, "take (while)" );
+          luaL_checkstack( L, nx+3+LUA_MINSTACK, "take (while)" );
           do { /* pred, array, x_1, ..., x_n, i, res, j */
             lua_pushvalue( L, nx+3 );
             lua_gettable( L, 2 );
@@ -824,7 +894,8 @@ LUA_KFUNCTION( drop_while_reducerk ) {
         lua_callk( L, lua_gettop( L )-1, LUA_MULTRET, 2,
                    drop_while_reducerk );
       } else {
-        luaL_checkstack( L, nargs, "drop (while) transducer" );
+        luaL_checkstack( L, nargs+LUA_MINSTACK,
+                         "drop (while) transducer" );
         for( i = 3; i <= nargs+2; ++i )
           lua_pushvalue( L, i );
         lua_callk( L, nargs, 1, 1, take_while_reducerk );
@@ -890,7 +961,7 @@ LUA_KFUNCTION( dropk ) {
           nx = lua_gettop( L )-2;
           lua_pushinteger( L, 1 ); /* store current iteration index */
           lua_newtable( L ); /* result table */
-          luaL_checkstack( L, nx+3, "drop (while)" );
+          luaL_checkstack( L, nx+3+LUA_MINSTACK, "drop (while)" );
           do { /* pred, array, x_1, ..., x_n, i, res */
             lua_pushinteger( L, i );
             lua_gettable( L, 2 );
@@ -978,7 +1049,7 @@ LUA_KFUNCTION( reducek ) {
             lua_settop( L, 2 );
             return 1;
           }
-          luaL_checkstack( L, 1, "reduce" );
+          luaL_checkstack( L, LUA_MINSTACK, "reduce" );
           lua_pushvalue( L, 8 );
           lua_replace( L, 5 );
           lua_callk( L, lua_gettop( L )-6, 2, 2, reducek );
@@ -994,7 +1065,7 @@ LUA_KFUNCTION( reducek ) {
         check_sequence( L, 3 );
         nx = lua_gettop( L )-3;
         lua_pushinteger( L, 1 ); /* store current iteration index */
-        luaL_checkstack( L, nx+3, "reduce" );
+        luaL_checkstack( L, nx+3+LUA_MINSTACK, "reduce" );
         do { /* fun, init, array, x_1, ..., x_n, i */
           lua_pushvalue( L, 1 );
           lua_pushvalue( L, 2 );
@@ -1061,7 +1132,11 @@ typedef struct {
 
 
 #ifndef FXLIB
-#  define FXLIB
+#  ifdef _WIN32
+#    define FXLIB __declspec(dllexport)
+#  else
+#    define FXLIB
+#  endif
 #endif
 
 FXLIB int luaopen_fx( lua_State* L ) {
@@ -1101,6 +1176,269 @@ FXLIB int luaopen_fx( lua_State* L ) {
   lua_pushcfunction( L, export );
   lua_setfield( L, -2, "__call" );
   lua_setmetatable( L, -2 );
+  return 1;
+}
+
+
+
+/* Collection of glue functions that manipulate vararg lists to
+ * make composing functions easier.
+ */
+
+LUA_KFUNCTION( vmapfk ) {
+  int n = lua_tointeger( L, lua_upvalueindex( 1 ) );
+  int i = 1, j = 0, nargs = 0;
+  (void)status;
+  switch( ctx ) {
+    case 0: /* args ... */
+      nargs = lua_gettop( L );
+      lua_pushinteger( L, i );
+      lua_pushinteger( L, nargs );
+      lua_rotate( L, 1, 2 ); /* i, nargs, args ... */
+      luaL_checkstack( L, nargs+1+LUA_MINSTACK, "vmap" );
+      while( i <= n ) {
+        lua_pushinteger( L, i+1 );
+        lua_replace( L, 1 );
+        lua_pushvalue( L, lua_upvalueindex( 1+i ) );
+        for( j = i; j <= nargs; ++j )
+          lua_pushvalue( L, 2+j );
+        lua_callk( L, nargs >= i ? nargs-i+1 : 0,
+                   i == n ? LUA_MULTRET : 1, 1, vmapfk );
+    case 1:
+        i = lua_tointeger( L, 1 );
+        nargs = lua_tointeger( L, 2 );
+      }
+  }
+  return lua_gettop( L )-nargs-2;
+}
+
+static int vmapf( lua_State* L ) {
+  return vmapfk( L, 0, 0 );
+}
+
+static int vmap( lua_State* L ) {
+  int i = 1, top = lua_gettop( L );
+  luaL_argcheck( L, top < LUAI_MAXUPVALUES-1, LUAI_MAXUPVALUES,
+                 "too many arguments" );
+  for( i = 1; i <= top; ++i )
+    check_callable( L, i );
+  lua_pushinteger( L, top );
+  lua_insert( L, 1 );
+  lua_pushcclosure( L, vmapf, top+1 );
+  return 1;
+}
+
+
+static int vdupf( lua_State* L ) {
+  int idx = get_index( L, 1 ), top = lua_gettop( L );
+  int i = 0, n = lua_tointeger( L, lua_upvalueindex( 2 ) );
+  if( idx+n-1 > top ) {
+    luaL_checkstack( L, idx-top+2*n-1, "vdup" );
+    top = idx+n-1;
+    lua_settop( L, top );
+  } else
+    luaL_checkstack( L, n, "vdup" );
+  for( i = 0; i < n; ++i )
+    lua_pushvalue( L, idx+i );
+  lua_rotate( L, idx+n, n );
+  return top+n;
+}
+
+static int vdup( lua_State* L ) {
+  int i = check_index( L, 1 );
+  int n = opt_uint( L, 2, 1 );
+  (void)i;
+  lua_settop( L, 1 );
+  lua_pushinteger( L, n );
+  lua_pushcclosure( L, vdupf, 2 );
+  return 1;
+}
+
+
+static int vinsertf( lua_State* L ) {
+  int idx = get_index( L, 1 ), top = lua_gettop( L );
+  int n = lua_tointeger( L, lua_upvalueindex( 2 ) );
+  int i = 0;
+  if( idx > top ) {
+    luaL_checkstack( L, idx+n, "vinsert" );
+    top = idx-1;
+    lua_settop( L, top );
+  } else if( idx+n > top )
+    luaL_checkstack( L, idx+n, "vinsert" );
+  for( i = 0; i < n; ++i )
+    lua_pushvalue( L, lua_upvalueindex( i+3 ) );
+  lua_rotate( L, idx, n );
+  return top+n;
+}
+
+static int vinsert( lua_State* L ) {
+  int i = opt_index( L, 1, 0 );
+  int top = lua_gettop( L );
+  if( top < 2 )
+    top = 2;
+  lua_settop( L, top );
+  lua_pushinteger( L, i );
+  lua_replace( L, 1 );
+  lua_pushinteger( L, top-1 );
+  lua_insert( L, 2 );
+  lua_pushcclosure( L, vinsertf, top+1 );
+  return 1;
+}
+
+
+static int vremovef( lua_State* L ) {
+  int idx = get_index( L, 1 ), top = lua_gettop( L );
+  int n = lua_tointeger( L, lua_upvalueindex( 2 ) );
+  if( n > top-idx+1 )
+    n = top-idx+1;
+  if( n > 0 ) {
+    lua_rotate( L, idx, -n );
+    top -= n;
+    lua_settop( L, top );
+  }
+  return top;
+}
+
+static int vremove( lua_State* L ) {
+  int i = check_index( L, 1 );
+  int n = opt_uint( L, 2, 1 );
+  (void)i;
+  lua_settop( L, 1 );
+  lua_pushinteger( L, n );
+  lua_pushcclosure( L, vremovef, 2 );
+  return 1;
+}
+
+
+static int vreplacef( lua_State* L ) {
+  int idx = get_index( L, 1 ), top = lua_gettop( L );
+  int n = lua_tointeger( L, lua_upvalueindex( 2 ) );
+  int i = 0;
+  if( idx+n-1 > top ) {
+    luaL_checkstack( L, idx+n-top, "vreplace" );
+    top = idx+n-1;
+    lua_settop( L, top );
+  }
+  for( i = 0; i < n; ++i ) {
+    lua_pushvalue( L, lua_upvalueindex( i+3 ) );
+    lua_replace( L, idx+i );
+  }
+  return top;
+}
+
+static int vreplace( lua_State* L ) {
+  int top = lua_gettop( L );
+  check_index( L, 1 );
+  if( top < 2 )
+    top = 2;
+  lua_settop( L, top );
+  lua_pushinteger( L, top-1 );
+  lua_insert( L, 2 );
+  lua_pushcclosure( L, vreplacef, top+1 );
+  return 1;
+}
+
+
+static int vreversef( lua_State* L ) {
+  int top = lua_gettop( L );
+  if( top > 0 ) {
+    int idx1 = get_index( L, 1 ), idx2 = get_index( L, 2 );
+    if( idx2 > top ) {
+      luaL_checkstack( L, idx2-top+1, "vreverse" );
+      lua_settop( L, idx2 );
+      top = idx2;
+    }
+    reverse( L, idx1, idx2 );
+  }
+  return top;
+}
+
+static int vreverse( lua_State* L ) {
+  int i = opt_index( L, 1, 1 );
+  int j = opt_index( L, 2, -1 );
+  lua_settop( L, 0 );
+  lua_pushinteger( L, i );
+  lua_pushinteger( L, j );
+  lua_pushcclosure( L, vreversef, 2 );
+  return 1;
+}
+
+
+static int vrotatef( lua_State* L ) {
+  int idx = get_index( L, 1 ), top = lua_gettop( L );
+  int n = lua_tointeger( L, lua_upvalueindex( 2 ) );
+  if( idx < top )
+    lua_rotate( L, idx, n % (top-idx+1) );
+  return top;
+}
+
+static int vrotate( lua_State* L ) {
+  int i = opt_index( L, 1, 1 );
+  int n = opt_int( L, 2, 1 );
+  lua_settop( L, 0 );
+  lua_pushinteger( L, i );
+  lua_pushinteger( L, n );
+  lua_pushcclosure( L, vrotatef, 2 );
+  return 1;
+}
+
+
+static int vtakef( lua_State* L ) {
+  int idx = lua_tointeger( L, lua_upvalueindex( 1 ) );
+  int top = lua_gettop( L );
+  if( idx < 0 ) {
+    idx += top+1;
+    if( idx <= 0 )
+      luaL_error( L, "index out of bounds" );
+  }
+  if( idx > top )
+    luaL_checkstack( L, idx-top, "vtake" );
+  lua_settop( L, idx );
+  return idx;
+}
+
+static int vtake( lua_State* L ) {
+  check_int( L, 1 );
+  lua_settop( L, 1 );
+  lua_pushcclosure( L, vtakef, 1 );
+  return 1;
+}
+
+
+static int vnotf( lua_State* L ) {
+  int idx = get_index( L, 1 ), top = lua_gettop( L );
+  if( idx > top ) {
+    luaL_checkstack( L, idx-top+1, "vnot" );
+    top = idx;
+    lua_settop( L, top );
+  }
+  lua_pushboolean( L, !lua_toboolean( L, idx ) );
+  lua_replace( L, idx );
+  return top;
+}
+
+static int vnot( lua_State* L ) {
+  check_index( L, 1 );
+  lua_settop( L, 1 );
+  lua_pushcclosure( L, vnotf, 1 );
+  return 1;
+}
+
+
+FXLIB int luaopen_fx_glue( lua_State* L ) {
+  luaL_Reg const functions[] = {
+    { "vmap", vmap },
+    { "vdup", vdup },
+    { "vinsert", vinsert },
+    { "vremove", vremove },
+    { "vreplace", vreplace },
+    { "vreverse", vreverse },
+    { "vrotate", vrotate },
+    { "vtake", vtake },
+    { "vnot", vnot },
+    { NULL, 0 }
+  };
+  luaL_newlib( L, functions );
   return 1;
 }
 
