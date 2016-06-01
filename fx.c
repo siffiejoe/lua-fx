@@ -1344,7 +1344,7 @@ static int vreversef( lua_State* L ) {
   if( top > 0 ) {
     int idx1 = get_index( L, 1 ), idx2 = get_index( L, 2 );
     if( idx2 > top ) {
-      luaL_checkstack( L, idx2-top+1, "vreverse" );
+      luaL_checkstack( L, idx2-top+2, "vreverse" );
       lua_settop( L, idx2 );
       top = idx2;
     }
