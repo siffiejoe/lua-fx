@@ -357,7 +357,7 @@ static int compose( lua_State* L ) {
   if( n < 1 )
     n = 1;
   lua_settop( L, n );
-  luaL_argcheck( L, n < LUAI_MAXUPVALUES-1, LUAI_MAXUPVALUES,
+  luaL_argcheck( L, n < LUAI_MAXUPVALUES, LUAI_MAXUPVALUES,
                  "too many arguments" );
   lua_pushnil( L ); /* placeholder for m */
   luaL_checkstack( L, n+1, "compose" );
@@ -1218,7 +1218,7 @@ static int vmapf( lua_State* L ) {
 
 static int vmap( lua_State* L ) {
   int i = 1, top = lua_gettop( L );
-  luaL_argcheck( L, top < LUAI_MAXUPVALUES-1, LUAI_MAXUPVALUES,
+  luaL_argcheck( L, top < LUAI_MAXUPVALUES, LUAI_MAXUPVALUES,
                  "too many arguments" );
   for( i = 1; i <= top; ++i )
     check_callable( L, i );
@@ -1274,6 +1274,8 @@ static int vinsertf( lua_State* L ) {
 static int vinsert( lua_State* L ) {
   int i = opt_index( L, 1, 0 );
   int top = lua_gettop( L );
+  luaL_argcheck( L, top < LUAI_MAXUPVALUES, LUAI_MAXUPVALUES,
+                 "too many arguments" );
   if( top < 2 )
     top = 2;
   lua_settop( L, top );
@@ -1329,6 +1331,8 @@ static int vreplacef( lua_State* L ) {
 static int vreplace( lua_State* L ) {
   int top = lua_gettop( L );
   check_index( L, 1 );
+  luaL_argcheck( L, top < LUAI_MAXUPVALUES, LUAI_MAXUPVALUES,
+                 "too many arguments" );
   if( top < 2 )
     top = 2;
   lua_settop( L, top );
