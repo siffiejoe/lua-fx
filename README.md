@@ -297,7 +297,14 @@ that do the actual vararg manipulation.
 
 The following glue functions are provided:
 
-*   `vmap( f1 [, f2 [, ..., fn]] ) ==> f`
+*   `vmap( fun [, idx1 [, idx2]] ) ==> f`
+
+    Returns a glue function that applies the function `fun` to each
+    argument (between indices `idx1` and `idx2`, inclusively) and
+    returns a list of the results. `fun`'s results are always adjusted
+    to one return value on every call.
+
+*   `vtransform( f1 [, f2 [, ..., fn]] ) ==> f`
 
     Returns a glue function that applies `f1` to `select( 1, ... )`
     to create the first return value, `f2` to `select( 2, ... )` to
@@ -328,8 +335,8 @@ The following glue functions are provided:
 *   `vreverse( [idx1 [, idx2]] ) ==> f`
 
     Returns a glue function that reverses all arguments between the
-    indices `idx1` and `idx2` (inclusive). `idx1` defaults to `1`, and
-    `idx2` defaults to `-1` (the last argument).
+    indices `idx1` and `idx2` (inclusively). `idx1` defaults to `1`,
+    and `idx2` defaults to `-1` (the last argument).
 
 *   `vrotate( [idx [, n]] ) ==> f`
 

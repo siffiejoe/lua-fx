@@ -24,8 +24,15 @@ local function is( ... )
 end
 
 
+local function e()
+end
+
 local function f()
   return 1, 2, 3, 4
+end
+
+local function inc( x )
+  return (x or 0)+1
 end
 
 local function m1( a, b, ... )
@@ -40,8 +47,15 @@ end
 
 
 print( "vmap" )
-is( 3, 5, 7, 12 )( compose( g.vmap( m1, m1, m1 ), f )() )
-is( 4, 3, 2, 1, 0 )( compose( g.vmap( m2,m2,m2,m2,m2 ), f )() )
+is( 2, 3, 4, 5 )( compose( g.vmap( inc ), f )() )
+is()( compose( g.vmap( inc ), e )() )
+is( 1, 3, 4, 5 )( compose( g.vmap( inc, 2 ), f )() )
+is( 1, 3, 4, 4 )( compose( g.vmap( inc, 2, -2 ), f )() )
+is( 1, 3, 4, 5, 1 )( compose( g.vmap( inc, 2, 5 ), f )() )
+
+print( "vtransform" )
+is( 3, 5, 7, 12 )( compose( g.vtransform( m1, m1, m1 ), f )() )
+is( 4, 3, 2, 1, 0 )( compose( g.vtransform( m2,m2,m2,m2,m2 ), f )() )
 
 print( "vdup" )
 is( 1,1,2,3,4 )( compose( g.vdup( 1 ), f )() )

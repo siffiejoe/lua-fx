@@ -1186,6 +1186,81 @@ FXLIB int luaopen_fx( lua_State* L ) {
  */
 
 LUA_KFUNCTION( vmapfk ) {
+  int idx1, idx2, i, top = 0;
+  (void)status;
+  switch( ctx ) {
+    case 0: /* args ... */
+      top = lua_gettop( L );
+      idx1 = lua_tointeger( L, lua_upvalueindex( 2 ) );
+      idx2 = lua_tointeger( L, lua_upvalueindex( 3 ) );
+      if( idx1 != 0 ) {
+        if( idx1 < 0 ) {
+          idx1 += top+1;
+          if( idx1 <= 0 )
+            luaL_error( L, "index out of bounds" );
+        } else if( idx1 > top ) {
+          luaL_checkstack( L, idx1+4+LUA_MINSTACK, "vmap" );
+          top = idx1;
+          lua_settop( L, top );
+        }
+      } else
+        idx1 = 1;
+      if( idx2 != 0 ) {
+        if( idx2 < 0 ) {
+          idx2 += top+1;
+          if( idx2 <= 0 )
+            luaL_error( L, "index out of bounds" );
+        } else if( idx2 > top ) {
+          luaL_checkstack( L, idx2+4+LUA_MINSTACK, "vmap" );
+          top = idx2;
+          lua_settop( L, top );
+        }
+      } else
+        idx2 = top;
+      if( idx1 > idx2 )
+        return top;
+      lua_pushinteger( L, idx1+=3 );
+      lua_pushinteger( L, idx2+=3 );
+      lua_pushinteger( L, top ); /* number of arguments */
+      lua_rotate( L, 1, 3 );
+      luaL_checkstack( L, top+1+LUA_MINSTACK, "vmap" );
+      for( i = 4; i < idx1; ++i )
+        lua_pushvalue( L, i );
+      while( idx1 <= idx2 ) {
+        lua_pushvalue( L, lua_upvalueindex( 1 ) );
+        lua_pushvalue( L, idx1 );
+        lua_pushinteger( L, ++idx1 );
+        lua_replace( L, 1 );
+        lua_callk( L, 1, 1, 1, vmapfk );
+    case 1: /* idx1, idx2, nargs, x1, ... xn, r1, r2, ... */
+        idx1 = lua_tointeger( L, 1 );
+        idx2 = lua_tointeger( L, 2 );
+        top = lua_tointeger( L, 3 );
+      }
+      for( i = idx1; i <= top+3; ++i )
+        lua_pushvalue( L, i );
+  }
+  return top;
+}
+
+static int vmapf( lua_State* L ) {
+  return vmapfk( L, 0, 0 );
+}
+
+static int vmap( lua_State* L ) {
+  int idx1, idx2;
+  check_callable( L, 1 );
+  idx1 = opt_index( L, 2, 0 );
+  idx2 = opt_index( L, 3, 0 );
+  lua_settop( L, 1 );
+  lua_pushinteger( L, idx1 );
+  lua_pushinteger( L, idx2 );
+  lua_pushcclosure( L, vmapf, 3 );
+  return 1;
+}
+
+
+LUA_KFUNCTION( vtransformfk ) {
   int n = lua_tointeger( L, lua_upvalueindex( 1 ) );
   int i = 1, j = 0, nargs = 0;
   (void)status;
@@ -1195,7 +1270,7 @@ LUA_KFUNCTION( vmapfk ) {
       lua_pushinteger( L, i );
       lua_pushinteger( L, nargs );
       lua_rotate( L, 1, 2 ); /* i, nargs, args ... */
-      luaL_checkstack( L, nargs+1+LUA_MINSTACK, "vmap" );
+      luaL_checkstack( L, nargs+1+LUA_MINSTACK, "vtransform" );
       while( i <= n ) {
         lua_pushinteger( L, i+1 );
         lua_replace( L, 1 );
@@ -1203,7 +1278,7 @@ LUA_KFUNCTION( vmapfk ) {
         for( j = i; j <= nargs; ++j )
           lua_pushvalue( L, 2+j );
         lua_callk( L, nargs >= i ? nargs-i+1 : 0,
-                   i == n ? LUA_MULTRET : 1, 1, vmapfk );
+                   i == n ? LUA_MULTRET : 1, 1, vtransformfk );
     case 1:
         i = lua_tointeger( L, 1 );
         nargs = lua_tointeger( L, 2 );
@@ -1212,11 +1287,11 @@ LUA_KFUNCTION( vmapfk ) {
   return lua_gettop( L )-nargs-2;
 }
 
-static int vmapf( lua_State* L ) {
-  return vmapfk( L, 0, 0 );
+static int vtransformf( lua_State* L ) {
+  return vtransformfk( L, 0, 0 );
 }
 
-static int vmap( lua_State* L ) {
+static int vtransform( lua_State* L ) {
   int i = 1, top = lua_gettop( L );
   luaL_argcheck( L, top < LUAI_MAXUPVALUES, LUAI_MAXUPVALUES,
                  "too many arguments" );
@@ -1224,7 +1299,7 @@ static int vmap( lua_State* L ) {
     check_callable( L, i );
   lua_pushinteger( L, top );
   lua_insert( L, 1 );
-  lua_pushcclosure( L, vmapf, top+1 );
+  lua_pushcclosure( L, vtransformf, top+1 );
   return 1;
 }
 
@@ -1432,6 +1507,7 @@ static int vnot( lua_State* L ) {
 FXLIB int luaopen_fx_glue( lua_State* L ) {
   luaL_Reg const functions[] = {
     { "vmap", vmap },
+    { "vtransform", vtransform },
     { "vdup", vdup },
     { "vinsert", vinsert },
     { "vremove", vremove },
