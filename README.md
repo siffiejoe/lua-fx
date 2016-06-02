@@ -301,8 +301,9 @@ The following glue functions are provided:
 
     Returns a glue function that applies the function `fun` to each
     argument (between indices `idx1` and `idx2`, inclusively) and
-    returns a list of the results. `fun`'s results are always adjusted
-    to one return value on every call.
+    returns the results (the arguments outside of the specified range
+    are passed unmodified). `fun`'s results are always adjusted to one
+    return value for each call.
 
 *   `vtransform( f1 [, f2 [, ..., fn]] ) ==> f`
 
