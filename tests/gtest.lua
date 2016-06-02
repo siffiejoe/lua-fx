@@ -49,6 +49,7 @@ end
 print( "vmap" )
 is( 2, 3, 4, 5 )( compose( g.vmap( inc ), f )() )
 is()( compose( g.vmap( inc ), e )() )
+is( 1, 2, 3, 4 )( compose( g.vmap( inc, 5 ), f )() )
 is( 1, 3, 4, 5 )( compose( g.vmap( inc, 2 ), f )() )
 is( 1, 3, 4, 4 )( compose( g.vmap( inc, 2, -2 ), f )() )
 is( 1, 3, 4, 5, 1 )( compose( g.vmap( inc, 2, 5 ), f )() )

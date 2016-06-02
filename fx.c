@@ -1200,7 +1200,7 @@ LUA_KFUNCTION( vmapfk ) {
             luaL_error( L, "index out of bounds" );
         } else if( idx1 > top ) {
           luaL_checkstack( L, idx1+4+LUA_MINSTACK, "vmap" );
-          top = idx1;
+          top = idx1-1;
           lua_settop( L, top );
         }
       } else
