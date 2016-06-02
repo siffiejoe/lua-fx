@@ -1,9 +1,6 @@
 #!/usr/bin/lua
 
 local fx = require( "fx" )()
-local N, PREFIX, stored = 3, "@@@@@@@", {}
-local unpack = table.unpack or unpack
-
 
 local letters = { "a", "b", "c", "d", "e", "f" }
 local numbers = { 1, 2, 3, 4, 3, 2, 1 }
@@ -218,7 +215,6 @@ print( map( inc, Identity( 17 ), 10 ) )
 print_array( xduce( map( doublep ), appending( 1 ), {}, t, 1 ) )
 print_array( xduce( map( double2 ), appending( 1 ), {}, ipairs( t ) ) )
 local ydp = compose( map( doublepy ), yielding )
-local yd2 = compose( map( double2y ), yielding )
 resume_x( function( ... )
   print( ... )
   print_array( xduce( ydp, appending( 1 ), {}, t, 1 ) )

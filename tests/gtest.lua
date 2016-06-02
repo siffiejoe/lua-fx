@@ -1,8 +1,8 @@
 #!/usr/bin/lua
 
-package.path = "../?.lua;"..package.path
 local fx = require( "fx" )()
 local g = require( "fx.glue" )
+
 
 local failed = 0
 
