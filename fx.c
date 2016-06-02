@@ -328,7 +328,7 @@ LUA_KFUNCTION( composedk ) {
     case 1:
         last = lua_tointeger( L, 1 );
         next = lua_tointeger( L, 2 );
-        luaL_checkstack( L, 1, "composed" );
+        luaL_checkstack( L, LUA_MINSTACK, "composed" );
         lua_pushinteger( L, --next ); /* update next idx */
         lua_replace( L, 2 );
       }
