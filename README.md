@@ -283,6 +283,8 @@ temporary copies of the iterated data structure.
   [3]: http://lua-users.org/lists/lua-l/2013-05/msg00426.html
 
 
+###                    Short Lambda Expressions                    ###
+
 In many circumstances the functions above accept a short lambda
 expression as a string instead of a real function. A short lambda
 expression has the following format:
@@ -296,7 +298,9 @@ local f = fx.compose( "x,y => x+y, x*y" )
 local g = fx.compose( load( "local x,y=...; return x+y, x*y" ) )
 ```
 There is no caching/memoization going on, so be aware of the
-performance implications if you do this in a tight loop.
+performance implications if you do this in a tight loop. In fact, it
+is recommended to use the short lambdas only as part of function
+compositions (see also the `fx.glue` module below).
 
 The following functions accept short lambda expressions: `fx.curry`,
 `fx.compose`, `fx.map` (first argument), `fx.filter` (first argument),
