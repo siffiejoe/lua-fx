@@ -78,6 +78,47 @@ static void lua_rotate( lua_State* L, int idx, int n ) {
 
 
 
+#define STR_LAMBDA_PREFIX "local "
+#define STR_LAMBDA_INFIX "=...;return "
+
+typedef struct {
+  char const* code;
+  size_t code_size;
+  size_t fa_pos; /* position of the start of the fat arrow */
+  int counter;
+} str_lambda_data;
+
+static char const* str_lambda_reader( lua_State* L, void* data,
+                                      size_t* size ) {
+  char const* s = NULL;
+  str_lambda_data* d = data;
+  (void)L;
+  switch( d->counter ) {
+    case 0:
+      s = STR_LAMBDA_PREFIX;
+      *size = sizeof( STR_LAMBDA_PREFIX )-1;
+      break;
+    case 1:
+      s = d->fa_pos > 0 ? d->code : " ";
+      *size = d->fa_pos > 0 ? d->fa_pos : 1;
+      break;
+    case 2:
+      s = STR_LAMBDA_INFIX;
+      *size = sizeof( STR_LAMBDA_INFIX )-1;
+      break;
+    case 3:
+      s = d->code + d->fa_pos + 2;
+      *size = d->code_size - (s - d->code);
+      break;
+    default:
+      *size = 0;
+      break;
+  }
+  d->counter++;
+  return s;
+}
+
+
 static int is_sequence( lua_State* L, int i ) {
   switch( lua_type( L, i ) ) {
     case LUA_TTABLE:
@@ -94,23 +135,35 @@ static int is_sequence( lua_State* L, int i ) {
   (luaL_argcheck( L, is_sequence( L, i ), i, "sequence expected" ))
 
 
-static int is_callable( lua_State* L, int i ) {
+static void check_callable( lua_State* L, int i ) {
+  int c = 0;
   switch( lua_type( L, i ) ) {
     case LUA_TFUNCTION:
-      return 1;
+      c = 1;
+      break;
     case LUA_TUSERDATA: /* fall through */
     case LUA_TTABLE:
       if( luaL_getmetafield( L, i, "__call" ) ) {
         lua_pop( L, 1 );
-        return 1;
+        c = 1;
       }
       break;
+    case LUA_TSTRING: {
+      size_t code_size = 0;
+      char const* code = lua_tolstring( L, i, &code_size );
+      str_lambda_data d = { code, code_size, 0, 0 };
+      char const* s = memchr( code, '=', code_size );
+      if( !s || s[ 1 ] != '>' )
+        luaL_argerror( L, i, "[lambda]:1: '=>' expected" );
+      d.fa_pos = s - code;
+      if( 0 != lua_load( L, str_lambda_reader, &d, "=[lambda]", NULL ) )
+        luaL_argerror( L, i, lua_tostring( L, -1 ) );
+      lua_replace( L, i );
+      c = 1;
+    }
   }
-  return 0;
+  luaL_argcheck( L, c, i, "callable value expected" );
 }
-#define check_callable( L, i ) \
-  (luaL_argcheck( L, is_callable( L, i ), i, \
-                  "function or callable userdata/table expected" ))
 
 
 static int check_index( lua_State* L, int idx ) {
@@ -355,47 +408,6 @@ static int is_composed( lua_State* L, int i ) {
 }
 
 
-#define STR_LAMBDA_PREFIX "local "
-#define STR_LAMBDA_INFIX "=...;return "
-
-typedef struct {
-  char const* code;
-  size_t code_size;
-  size_t fa_pos; /* position of the start of the fat arrow */
-  int counter;
-} str_lambda_data;
-
-static char const* str_lambda_reader( lua_State* L, void* data,
-                                      size_t* size ) {
-  char const* s = NULL;
-  str_lambda_data* d = data;
-  (void)L;
-  switch( d->counter ) {
-    case 0:
-      s = STR_LAMBDA_PREFIX;
-      *size = sizeof( STR_LAMBDA_PREFIX )-1;
-      break;
-    case 1:
-      s = d->fa_pos > 0 ? d->code : " ";
-      *size = d->fa_pos > 0 ? d->fa_pos : 1;
-      break;
-    case 2:
-      s = STR_LAMBDA_INFIX;
-      *size = sizeof( STR_LAMBDA_INFIX )-1;
-      break;
-    case 3:
-      s = d->code + d->fa_pos + 2;
-      *size = d->code_size - (s - d->code);
-      break;
-    default:
-      *size = 0;
-      break;
-  }
-  d->counter++;
-  return s;
-}
-
-
 static int compose( lua_State* L ) {
   int i, j, a, m = 0, n = lua_gettop( L );
   if( n < 1 )
@@ -406,27 +418,15 @@ static int compose( lua_State* L ) {
   lua_pushnil( L ); /* placeholder for m */
   luaL_checkstack( L, n+1, "compose" );
   for( i = 1; i <= n; ++i, ++m ) {
-    if( lua_type( L, i ) == LUA_TSTRING ) {
-      size_t code_size = 0;
-      char const* code = lua_tolstring( L, i, &code_size );
-      str_lambda_data d = { code, code_size, 0, 0 };
-      char const* s = memchr( code, '=', code_size );
-      if( !s || s[ 1 ] != '>' )
-        return luaL_argerror( L, i, "[lambda]:1: '=>' expected" );
-      d.fa_pos = s - code;
-      if( 0 != lua_load( L, str_lambda_reader, &d, "=[lambda]", NULL ) )
-        return luaL_argerror( L, i, lua_tostring( L, -1 ) );
-    } else {
-      check_callable( L, i );
-      a = is_composed( L, i );
-      if( a < 1 || a+m+n-i+1 > LUAI_MAXUPVALUES )
-        lua_pushvalue( L, i );
-      else { /* unpack composed function */
-        luaL_checkstack( L, n-i+a, "compose" );
-        for( j = 1; j <= a; ++j )
-          lua_getupvalue( L, i, j+1 );
-        m += a-1;
-      }
+    check_callable( L, i );
+    a = is_composed( L, i );
+    if( a < 1 || a+m+n-i+1 > LUAI_MAXUPVALUES )
+      lua_pushvalue( L, i );
+    else { /* unpack composed function */
+      luaL_checkstack( L, n-i+a, "compose" );
+      for( j = 1; j <= a; ++j )
+        lua_getupvalue( L, i, j+1 );
+      m += a-1;
     }
   }
   if( m == 1 ) /* no need for composing a single function */
@@ -863,7 +863,30 @@ LUA_KFUNCTION( takek ) {
   (void)status;
   switch( ctx ) {
     case 0:
-      if( is_callable( L, 1 ) ) { /* -> take-while */
+      if( lua_type( L, 1 ) == LUA_TNUMBER ) { /* -> take-n */
+        int n = luaL_checkinteger( L, 1 );
+        if( lua_isfunction( L, 2 ) ) {
+          lua_settop( L, 2 );
+          lua_pushcclosure( L, take_n_reducer, 2 );
+          return 1;
+        } else { /* work on sequence(-like object) */
+          check_sequence( L, 2 );
+          lua_settop( L, 2 );
+          lua_newtable( L ); /* result table */
+          while( i <= n ) { /* n, array, res */
+            lua_pushinteger( L, i++ );
+            lua_pushvalue( L, -1 );
+            lua_gettable( L, 2 );
+            if( lua_isnil( L, -1 ) ) {
+              lua_pop( L, 2 );
+              return 1;
+            }
+            lua_rawset( L, -3 );
+          }
+          return 1;
+        }
+      } else { /* -> take-while */
+        check_callable( L, 1 );
         if( lua_isfunction( L, 2 ) ) {
           lua_settop( L, 2 );
           lua_pushcclosure( L, take_while_reducer, 2 );
@@ -902,28 +925,6 @@ LUA_KFUNCTION( takek ) {
             lua_pushinteger( L, ++i );
             lua_replace( L, nx+3 ); /* update i */
           } while( 1 );
-        }
-      } else { /* -> take-n */
-        int n = luaL_checkinteger( L, 1 );
-        if( lua_isfunction( L, 2 ) ) {
-          lua_settop( L, 2 );
-          lua_pushcclosure( L, take_n_reducer, 2 );
-          return 1;
-        } else { /* work on sequence(-like object) */
-          check_sequence( L, 2 );
-          lua_settop( L, 2 );
-          lua_newtable( L ); /* result table */
-          while( i <= n ) { /* n, array, res */
-            lua_pushinteger( L, i++ );
-            lua_pushvalue( L, -1 );
-            lua_gettable( L, 2 );
-            if( lua_isnil( L, -1 ) ) {
-              lua_pop( L, 2 );
-              return 1;
-            }
-            lua_rawset( L, -3 );
-          }
-          return 1;
         }
       }
   }
@@ -1009,7 +1010,31 @@ LUA_KFUNCTION( dropk ) {
   (void)status;
   switch( ctx ) {
     case 0:
-      if( is_callable( L, 1 ) ) { /* -> drop-while */
+      if( lua_type( L, 1 ) == LUA_TNUMBER ) { /* -> drop-n */
+        int n = luaL_checkinteger( L, 1 );
+        if( lua_isfunction( L, 2 ) ) {
+          lua_settop( L, 2 );
+          lua_pushcclosure( L, drop_n_reducer, 2 );
+          return 1;
+        } else { /* work on sequence(-like object) */
+          check_sequence( L, 2 );
+          lua_settop( L, 2 );
+          lua_newtable( L ); /* result table */
+          do { /* n, array, res */
+            lua_pushinteger( L, i );
+            lua_gettable( L, 2 );
+            if( lua_isnil( L, -1 ) ) {
+              lua_pop( L, 1 );
+              return 1;
+            }
+            if( i++ > n )
+              lua_rawseti( L, -2, j++ );
+            else
+              lua_pop( L, 1 );
+          } while( 1 );
+        }
+      } else {
+        check_callable( L, 1 );
         if( lua_isfunction( L, 2 ) ) {
           lua_settop( L, 2 );
           lua_pushcclosure( L, drop_while_reducer, 2 );
@@ -1049,29 +1074,6 @@ LUA_KFUNCTION( dropk ) {
               lua_pushinteger( L, ++i );
               lua_replace( L, nx+3 );
             }
-          } while( 1 );
-        }
-      } else { /* -> drop-n */
-        int n = luaL_checkinteger( L, 1 );
-        if( lua_isfunction( L, 2 ) ) {
-          lua_settop( L, 2 );
-          lua_pushcclosure( L, drop_n_reducer, 2 );
-          return 1;
-        } else { /* work on sequence(-like object) */
-          check_sequence( L, 2 );
-          lua_settop( L, 2 );
-          lua_newtable( L ); /* result table */
-          do { /* n, array, res */
-            lua_pushinteger( L, i );
-            lua_gettable( L, 2 );
-            if( lua_isnil( L, -1 ) ) {
-              lua_pop( L, 1 );
-              return 1;
-            }
-            if( i++ > n )
-              lua_rawseti( L, -2, j++ );
-            else
-              lua_pop( L, 1 );
           } while( 1 );
         }
       }

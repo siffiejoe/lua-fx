@@ -149,18 +149,6 @@ temporary copies of the iterated data structure.
     end
     ```
 
-    Instead of a function you may also pass a short lambda expression
-    in the format `<arg> [,<arg]* => <expr> [, <expr>]*` as a string.
-    E.g., the following two lines are roughly equivalent:
-    ```lua
-    local f = fx.compose( "x,y => x+y, x*y" )
-    local g = fx.compose( load( "local x,y=...; return x+y, x*y" ) )
-    ```
-    This feature is intended for small modifications to arguments
-    and/or return values in the functional pipeline (see also the
-    `fx.glue` module below).
-
-
 *   `fx.map( fun, t, ... ) ==> t2`
 
     `fx.map( fun, f ) ==> g`  (`f` and `g` are reducing functions)
@@ -295,6 +283,27 @@ temporary copies of the iterated data structure.
   [3]: http://lua-users.org/lists/lua-l/2013-05/msg00426.html
 
 
+In many circumstances the functions above accept a short lambda
+expression as a string instead of a real function. A short lambda
+expression has the following format:
+```lua
+<arg> [,<arg>]* => [<expr> [, <expr>]*]
+```
+The string is compiled into a Lua function on-the-fly using
+`lua_load()`, so the following two lines are roughly equivalent:
+```lua
+local f = fx.compose( "x,y => x+y, x*y" )
+local g = fx.compose( load( "local x,y=...; return x+y, x*y" ) )
+```
+There is no caching/memoization going on, so be aware of the
+performance implications if you do this in a tight loop.
+
+The following functions accept short lambda expressions: `fx.curry`,
+`fx.compose`, `fx.map` (first argument), `fx.filter` (first argument),
+`fx.take` (first argument), `fx.drop` (first argument), and
+`fx.reduce` (first argument).
+
+
 ###                         Glue Functions                         ###
 
 Unlike many functional programming languages, Lua supports multiple
@@ -314,14 +323,15 @@ The following glue functions are provided:
     argument (between indices `idx1` and `idx2`, inclusively) and
     returns the results (the arguments outside of the specified range
     are passed unmodified). `fun`'s results are always adjusted to one
-    return value for each call.
+    return value for each call. `vmap` accepts short lambdas.
 
 *   `vtransform( f1 [, f2 [, ..., fn]] ) ==> f`
 
     Returns a glue function that applies `f1` to `select( 1, ... )`
     to create the first return value, `f2` to `select( 2, ... )` to
     create the second return value, and so on. The last `fn` may
-    return multiple values as usual.
+    return multiple values as usual. `vtransform` accepts short
+    lambdas.
 
 *   `vdup( idx [, n] ) ==> f`
 
