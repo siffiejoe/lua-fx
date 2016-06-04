@@ -376,13 +376,8 @@ static char const* str_lambda_reader( lua_State* L, void* data,
       *size = sizeof( STR_LAMBDA_PREFIX )-1;
       break;
     case 1:
-      if( d->fa_pos > 0 ) {
-        s = d->code;
-        *size = d->fa_pos;
-      } else { /* this leads to a better parse error message: */
-        s = " ";
-        *size = 1;
-      }
+      s = d->fa_pos > 0 ? d->code : " ";
+      *size = d->fa_pos > 0 ? d->fa_pos : 1;
       break;
     case 2:
       s = STR_LAMBDA_INFIX;
