@@ -429,6 +429,8 @@ static int compose( lua_State* L ) {
       }
     }
   }
+  if( m == 1 ) /* no need for composing a single function */
+    return 1;
   lua_pushinteger( L, m );
   lua_replace( L, n+1 );
   /* upvalues: m, f1, f2, ..., fm */
