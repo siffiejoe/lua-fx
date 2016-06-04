@@ -19,6 +19,9 @@ typedef int lua_KContext;
 #define lua_callk( L, na, nr, ctx, cont ) \
   ((void)(ctx),(void)(cont),lua_call( L, na, nr ))
 
+#define lua_load( L, r, d, s, m ) \
+  ((void)m,lua_load( L, r, d, s ))
+
 #endif /* LUA_VERSION_NUM < 502 */
 
 
@@ -352,6 +355,37 @@ static int is_composed( lua_State* L, int i ) {
 }
 
 
+#define STR_LAMBDA_PREFIX "local x,y,z=...; return "
+
+typedef struct {
+  char const* code;
+  size_t code_size;
+  int counter;
+} str_lambda_data;
+
+static char const* str_lambda_reader( lua_State* L, void* data,
+                                      size_t* size ) {
+  char const* s = NULL;
+  str_lambda_data* d = data;
+  (void)L;
+  switch( d->counter ) {
+    case 0:
+      s = STR_LAMBDA_PREFIX;
+      *size = sizeof( STR_LAMBDA_PREFIX )-1;
+      break;
+    case 1:
+      s = d->code;
+      *size = d->code_size;
+      break;
+    default:
+      *size = 0;
+      break;
+  }
+  d->counter++;
+  return s;
+}
+
+
 static int compose( lua_State* L ) {
   int i, j, a, m = 0, n = lua_gettop( L );
   if( n < 1 )
@@ -362,15 +396,23 @@ static int compose( lua_State* L ) {
   lua_pushnil( L ); /* placeholder for m */
   luaL_checkstack( L, n+1, "compose" );
   for( i = 1; i <= n; ++i, ++m ) {
-    check_callable( L, i );
-    a = is_composed( L, i );
-    if( a < 1 || a+m+n-i+1 > LUAI_MAXUPVALUES )
-      lua_pushvalue( L, i );
-    else { /* unpack composed function */
-      luaL_checkstack( L, n-i+a, "compose" );
-      for( j = 1; j <= a; ++j )
-        lua_getupvalue( L, i, j+1 );
-      m += a-1;
+    if( lua_type( L, i ) == LUA_TSTRING ) {
+      size_t code_size = 0;
+      char const* code = lua_tolstring( L, i, &code_size );
+      str_lambda_data d = { code, code_size, 0 };
+      if( 0 != lua_load( L, str_lambda_reader, &d, code, NULL ) )
+        return luaL_argerror( L, i, lua_tostring( L, -1 ) );
+    } else {
+      check_callable( L, i );
+      a = is_composed( L, i );
+      if( a < 1 || a+m+n-i+1 > LUAI_MAXUPVALUES )
+        lua_pushvalue( L, i );
+      else { /* unpack composed function */
+        luaL_checkstack( L, n-i+a, "compose" );
+        for( j = 1; j <= a; ++j )
+          lua_getupvalue( L, i, j+1 );
+        m += a-1;
+      }
     }
   }
   lua_pushinteger( L, m );

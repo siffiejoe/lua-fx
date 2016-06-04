@@ -168,6 +168,9 @@ resume_x( function( ... )
   print( "compose", k( 1, 2, 3 ) )
   return "return"
 end )
+local n = compose( "x-3, y+4", "x+z, y+z" )
+print( "compose", n( 5, 7, 9 ) )
+print( pcall( compose, add( 1 ), "x-", add( 1 ) ) )
 __________()
 
 
