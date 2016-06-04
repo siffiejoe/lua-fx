@@ -152,8 +152,8 @@ temporary copies of the iterated data structure.
     Instead of a function you may also pass a Lua expression (list)
     as a string. The following two lines are roughly equivalent:
     ```lua
-    compose( s )   -- `s` being a string
-    compose( assert( load( "local x,y,z=...; return " .. s ) ) )()
+    fx.compose( s )   -- `s` being a string
+    fx.compose( assert( load( "local x,y,z=...; return " .. s ) ) )()
     ```
     This feature is intended for small modifications to arguments
     and/or return values in the functional pipeline (see also the
