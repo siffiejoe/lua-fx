@@ -149,11 +149,12 @@ temporary copies of the iterated data structure.
     end
     ```
 
-    Instead of a function you may also pass a Lua expression (list)
-    as a string. The following two lines are roughly equivalent:
+    Instead of a function you may also pass a short lambda expression
+    in the format `<arg> [,<arg]* => <expr> [, <expr>]*` as a string.
+    E.g., the following two lines are roughly equivalent:
     ```lua
-    fx.compose( s )()   -- `s` being a string
-    fx.compose( assert( load( "local x,y,z=...; return " .. s ) ) )()
+    local f = fx.compose( "x,y => x+y, x*y" )
+    local g = fx.compose( load( "local x,y=...; return x+y, x*y" ) )
     ```
     This feature is intended for small modifications to arguments
     and/or return values in the functional pipeline (see also the

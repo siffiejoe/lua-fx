@@ -168,9 +168,11 @@ resume_x( function( ... )
   print( "compose", k( 1, 2, 3 ) )
   return "return"
 end )
-local n = compose( "x-3, y+4", "x+z, y+z" )
+local n = compose( "x,y => x-3, y+4", "a,b,c=>a+c,b+c" )
 print( "compose", n( 5, 7, 9 ) )
 print( pcall( compose, add( 1 ), "x-", add( 1 ) ) )
+print( pcall( compose, add( 1 ), "=>x-y", add( 1 ) ) )
+print( pcall( compose, add( 1 ), " => x-y", add( 1 ) ) )
 __________()
 
 

@@ -355,11 +355,13 @@ static int is_composed( lua_State* L, int i ) {
 }
 
 
-#define STR_LAMBDA_PREFIX "local x,y,z=...; return "
+#define STR_LAMBDA_PREFIX "local "
+#define STR_LAMBDA_INFIX "=...;return "
 
 typedef struct {
   char const* code;
   size_t code_size;
+  size_t fa_pos; /* position of the start of the fat arrow */
   int counter;
 } str_lambda_data;
 
@@ -374,8 +376,21 @@ static char const* str_lambda_reader( lua_State* L, void* data,
       *size = sizeof( STR_LAMBDA_PREFIX )-1;
       break;
     case 1:
-      s = d->code;
-      *size = d->code_size;
+      if( d->fa_pos > 0 ) {
+        s = d->code;
+        *size = d->fa_pos;
+      } else { /* this leads to a better parse error message: */
+        s = " ";
+        *size = 1;
+      }
+      break;
+    case 2:
+      s = STR_LAMBDA_INFIX;
+      *size = sizeof( STR_LAMBDA_INFIX )-1;
+      break;
+    case 3:
+      s = d->code + d->fa_pos + 2;
+      *size = d->code_size - (s - d->code);
       break;
     default:
       *size = 0;
@@ -399,8 +414,12 @@ static int compose( lua_State* L ) {
     if( lua_type( L, i ) == LUA_TSTRING ) {
       size_t code_size = 0;
       char const* code = lua_tolstring( L, i, &code_size );
-      str_lambda_data d = { code, code_size, 0 };
-      if( 0 != lua_load( L, str_lambda_reader, &d, code, NULL ) )
+      str_lambda_data d = { code, code_size, 0, 0 };
+      char const* s = memchr( code, '=', code_size );
+      if( !s || s[ 1 ] != '>' )
+        return luaL_argerror( L, i, "[lambda]:1: '=>' expected" );
+      d.fa_pos = s - code;
+      if( 0 != lua_load( L, str_lambda_reader, &d, "=[lambda]", NULL ) )
         return luaL_argerror( L, i, lua_tostring( L, -1 ) );
     } else {
       check_callable( L, i );
