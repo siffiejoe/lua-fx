@@ -152,7 +152,7 @@ temporary copies of the iterated data structure.
     Instead of a function you may also pass a Lua expression (list)
     as a string. The following two lines are roughly equivalent:
     ```lua
-    fx.compose( s )   -- `s` being a string
+    fx.compose( s )()   -- `s` being a string
     fx.compose( assert( load( "local x,y,z=...; return " .. s ) ) )()
     ```
     This feature is intended for small modifications to arguments
