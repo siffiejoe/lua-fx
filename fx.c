@@ -1192,11 +1192,11 @@ typedef struct {
 
 
 #ifndef FXLIB
-#  ifdef _WIN32
-#    define FXLIB __declspec(dllexport)
-#  else
-#    define FXLIB
-#  endif
+#ifdef _WIN32
+#define FXLIB __declspec(dllexport)
+#else
+#define FXLIB
+#endif
 #endif
 
 FXLIB int luaopen_fx( lua_State* L ) {
