@@ -957,7 +957,7 @@ LUA_KFUNCTION( drop_while_reducerk ) {
                          "drop (while) transducer" );
         for( i = 3; i <= nargs+2; ++i )
           lua_pushvalue( L, i );
-        lua_callk( L, nargs, 1, 1, take_while_reducerk );
+        lua_callk( L, nargs, 1, 1, drop_while_reducerk );
     case 1: /* reducer, state, x_1, ..., x_n, r */
         if( lua_toboolean( L, -1 ) ) {
           lua_settop( L, 2 );
@@ -1006,7 +1006,7 @@ static int drop_n_reducer( lua_State* L ) {
 
 
 LUA_KFUNCTION( dropk ) {
-  int nx = 0, i = 1, j = 1, doassign = 0;
+  int nx = 0, i = 1, j = 1, k = 1, doassign = 0;
   (void)status;
   switch( ctx ) {
     case 0:
@@ -1052,11 +1052,11 @@ LUA_KFUNCTION( dropk ) {
               lua_pop( L, 1 );
               return 1;
             }
-            if( j < 2 ) {
+            if( !doassign ) {
               lua_pushvalue( L, 1 );
               lua_pushvalue( L, -2 );
-              for( j = 3; j <= nx+2; ++j )
-                lua_pushvalue( L, j );
+              for( k = 3; k <= nx+2; ++k )
+                lua_pushvalue( L, k );
               lua_callk( L, nx+1, 1, 1, dropk );
     case 1: /* pred, array, x_1, ..., x_n, i, res, v, r */
               nx = lua_gettop( L )-6;
@@ -1064,8 +1064,7 @@ LUA_KFUNCTION( dropk ) {
               if( !lua_toboolean( L, -1 ) )
                 doassign = 1;
               lua_pop( L, 1 );
-            } else
-              doassign = 1;
+            }
             if( doassign ) {
               lua_rawseti( L, -2, j++ );
               ++i;
