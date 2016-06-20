@@ -134,19 +134,21 @@ end
 
 
 local function test_map()
-  local t = { 1, 2, 3, 4 }
   local function dp( v, w ) return 2 * v + w end
-  assert( returns( is_eq{ 3,5,7,9 }, map, dp, t, 1 ) )
+  assert( returns( is_eq{ 3,5,7,9,7,5,3 }, map, dp, numbers, 1 ) )
   local function dpy( v, w )
     coroutine.yield( "yield", v )
     return 2 * v + w
   end
   if _VERSION ~= "Lua 5.1" then
-    assert( yields( map, { dpy,t,1 }, resp( "yield",1 ),
+    assert( yields( map, { dpy,numbers,1 }, resp( "yield",1 ),
                          {}, resp( "yield",2 ),
                          {}, resp( "yield",3 ),
                          {}, resp( "yield",4 ),
-                         {}, is_eq{ 3,5,7,9} ) )
+                         {}, resp( "yield",3 ),
+                         {}, resp( "yield",2 ),
+                         {}, resp( "yield",1 ),
+                         {}, is_eq{ 3,5,7,9,7,5,3 } ) )
   end
   local function inc( x, v ) return x+v end
   local Identity_meta = {}
@@ -159,53 +161,60 @@ local function test_map()
   assert( returns( is_eq( Identity( 27 ) ),
                    map, inc, Identity( 17 ), 10 ) )
   assert( returns( is_function, map, dp ) )
-  assert( returns( is_eq{ 3,5,7,9 },
-                   xduce, map( dp ), appending( 1 ), {}, t, 1 ) )
-  assert( returns( is_eq{ 2,4,6,8 },
+  assert( returns( is_eq{ 3,5,7,9,7,5,3 },
+                   xduce, map( dp ), appending( 1 ), {}, numbers, 1 ) )
+  assert( returns( is_eq{ 2,4,6,8,6,4,2 },
                    xduce, map"_,y => 2*y", appending( 1 ), {},
-                   ipairs( t ) ) )
+                   ipairs( numbers ) ) )
   if _VERSION ~= "Lua 5.1" then
-    assert( yields( xduce, { map( dpy ),appending( 1 ),{},t,1 },
+    assert( yields( xduce, { map( dpy ),appending( 1 ),{},numbers,1 },
                     resp( "yield",1 ),
                     {}, resp( "yield",2 ),
                     {}, resp( "yield",3 ),
                     {}, resp( "yield",4 ),
-                    {}, is_eq{ 3,5,7,9 } ) )
+                    {}, resp( "yield",3 ),
+                    {}, resp( "yield",2 ),
+                    {}, resp( "yield",1 ),
+                    {}, is_eq{ 3,5,7,9,7,5,3 } ) )
   end
 end
 
 
 local function test_filter()
-  local t = { 1, 2, 3, 4, 5 }
   local function rem( v, d, r )
     return v % d == r
   end
-  assert( returns( is_eq{2,4}, filter, rem, t, 2, 0 ) )
+  assert( returns( is_eq{2,4,2}, filter, rem, numbers, 2, 0 ) )
   local function remy( v, d, r )
     coroutine.yield( "yield", v )
     return v % d == r
   end
   if _VERSION ~= "Lua 5.1" then
-    assert( yields( filter, { remy,t,2,1 }, resp( "yield",1 ),
+    assert( yields( filter, { remy,numbers,2,1 }, resp( "yield",1 ),
                             {}, resp( "yield",2 ),
                             {}, resp( "yield",3 ),
                             {}, resp( "yield",4 ),
-                            {}, resp( "yield",5 ),
-                            {}, is_eq{ 1,3,5 } ) )
+                            {}, resp( "yield",3 ),
+                            {}, resp( "yield",2 ),
+                            {}, resp( "yield",1 ),
+                            {}, is_eq{ 1,3,3,1 } ) )
   end
   assert( returns( is_function, filter, rem ) )
-  assert( returns( is_eq{ 1,3,5 }, xduce, filter( rem ),
-                   appending( 1 ), {}, t, 2, 1 ) )
-  assert( returns( is_eq{ 2,4 }, xduce, filter"_,y => y%2==0",
-                   appending( 1 ), {}, ipairs( t ) ) )
+  assert( returns( is_eq{ 1,3,3,1 }, xduce, filter( rem ),
+                   appending( 1 ), {}, numbers, 2, 1 ) )
+  assert( returns( is_eq{ 2,4,2 }, xduce, filter"_,y => y%2==0",
+                   appending( 2 ), {}, ipairs( numbers ) ) )
   if _VERSION ~= "Lua 5.1" then
-    assert( yields( xduce, { filter( remy ),appending( 1 ),{},t,2,1 },
+    assert( yields( xduce,
+                    { filter( remy ),appending( 1 ),{},numbers,2,1 },
                     resp( "yield", 1 ),
                     {}, resp( "yield",2 ),
                     {}, resp( "yield",3 ),
                     {}, resp( "yield",4 ),
-                    {}, resp( "yield",5 ),
-                    {}, is_eq{ 1,3,5 } ) )
+                    {}, resp( "yield",3 ),
+                    {}, resp( "yield",2 ),
+                    {}, resp( "yield",1 ),
+                    {}, is_eq{ 1,3,3,1 } ) )
   end
 end
 
@@ -284,40 +293,41 @@ end
 
 
 local function test_reduce()
-  local t = { 1, 2, 3, 4 }
   local function a( s, x, y )
     return s+x+y, x > 2 and fx._
   end
   local function b( s, _, x )
     return s+x, x > 2 and fx._
   end
-  assert( returns( 9, reduce, a, 0, t, 1 ) )
-  assert( returns( 6, reduce, b, 0, ipairs( t ) ) )
-  assert( returns( 10, reduce, "s,x => s+x", 0, t ) )
+  assert( returns( 9, reduce, a, 0, numbers, 1 ) )
+  assert( returns( 6, reduce, b, 0, ipairs( numbers ) ) )
+  assert( returns( 16, reduce, "s,x => s+x", 0, numbers ) )
   assert( returns( is_function, reduce, a ) )
   assert( returns( is_function, reduce, a, 0 ) )
-  local function y1( s, x, y )
-    coroutine.yield( "yield", x )
-    return s+x+y
-  end
-  local function y2( s, _, x )
-    coroutine.yield( "yield", x )
-    return s+x
-  end
-
   if _VERSION ~= "Lua 5.1" then
-    assert( yields( reduce, { y1,0,t,1 }, resp( "yield",1 ),
+    local function y1( s, x, y )
+      coroutine.yield( "yield", x )
+      return s+x+y
+    end
+    assert( yields( reduce, { y1,0,numbers,1 }, resp( "yield",1 ),
                             {}, resp( "yield",2 ),
                             {}, resp( "yield",3 ),
                             {}, resp( "yield",4 ),
-                            {}, 14 ) )
+                            {}, resp( "yield",3 ),
+                            {}, resp( "yield",2 ),
+                            {}, resp( "yield",1 ),
+                            {}, 23 ) )
+    local function y2( s, x )
+      coroutine.yield( "yield", x )
+      return s+x
+    end
     local function yiter( limit )
       limit = limit or 3
       return function( _, var )
         var = var + 1
         if var <= limit then
           coroutine.yield( "iyield", var )
-          return var, var
+          return var
         end
       end, nil, 0
     end
