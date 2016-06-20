@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/siffiejoe/lua-fx.svg?branch=master)](https://travis-ci.org/siffiejoe/lua-fx)
+
 #                 FX -- Functional Experiments in Lua                #
 
 ##                           Introduction                           ##
