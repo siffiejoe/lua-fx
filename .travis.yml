@@ -13,11 +13,11 @@ os:
 # Environment variables for the build.
 env:
   global:
-    - LUAROCKS=2.3.0
+    - LUAROCKS=LuaRocks-2.3.0
   matrix:
     - LUA=LuaJIT-2.0.4
     - LUA=Lua-5.2.4
-    - LUA=5.3.3
+    - LUA=Lua-5.3.3
 
 # Only test changes to the master branch.
 branches:
