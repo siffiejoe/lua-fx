@@ -90,6 +90,7 @@ local function test_compose()
   local l = compose( a1, a1, a1, a1, a1, a1, a1, a1, a1, a1 )
   local m = compose( l, l, l, l, l, l, l, l, l, l, l, l, l, l, l, l,
                      l, l, l, l, l, l, l, l, l, l, l )
+  assert( is_function( f ) )
   assert( returns( 22, f, 3 ) )
   assert( returns( 25, g, 3 ) )
   assert( returns( 5, h, 3 ) )
@@ -161,8 +162,10 @@ local function test_map()
   assert( returns( is_eq( Identity( 27 ) ),
                    map, inc, Identity( 17 ), 10 ) )
   assert( returns( is_function, map, dp ) )
-  assert( returns( is_eq{ 3,5,7,9,7,5,3 },
-                   xduce, map( dp ), appending( 1 ), {}, numbers, 1 ) )
+  assert( returns( is_eq{ 3,5,7,9,7,5,3 }, xduce, map( dp ),
+                   appending( 1 ), {}, numbers, 1 ) )
+  assert( returns( is_eq{ 3,5,7,9,7,5,3 }, reduce,
+                   map( dp, appending( 1 ) ), {}, numbers, 1 ) )
   assert( returns( is_eq{ 2,4,6,8,6,4,2 },
                    xduce, map"_,y => 2*y", appending( 1 ), {},
                    ipairs( numbers ) ) )
@@ -202,6 +205,8 @@ local function test_filter()
   assert( returns( is_function, filter, rem ) )
   assert( returns( is_eq{ 1,3,3,1 }, xduce, filter( rem ),
                    appending( 1 ), {}, numbers, 2, 1 ) )
+  assert( returns( is_eq{ 1,3,3,1 }, reduce,
+                   filter( rem, appending( 1 ) ), {}, numbers, 2, 1 ) )
   assert( returns( is_eq{ 2,4,2 }, xduce, filter"_,y => y%2==0",
                    appending( 2 ), {}, ipairs( numbers ) ) )
   if _VERSION ~= "Lua 5.1" then
@@ -237,6 +242,8 @@ local function test_take()
   end
   assert( returns( is_function, take, 2 ) )
   assert( returns( is_function, take, lt4 ) )
+  assert( returns( is_eq{ "a","b" }, reduce,
+                   take( 2, appending( 1 ) ), {}, letters ) )
   assert( returns( is_eq{ "a","b" }, xduce, take( 2 ), appending( 1 ),
                    {}, letters ) )
   assert( returns( is_eq{ 1,2 }, xduce, take( "x,y => x<y" ),
@@ -277,6 +284,8 @@ local function test_drop()
   assert( returns( is_function, drop, lt ) )
   assert( returns( is_eq{ "e","f" }, xduce, drop( 4 ), appending( 1 ),
                    {}, letters ) )
+  assert( returns( is_eq{ "e","f" }, reduce,
+                   drop( 4, appending( 1 ) ), {}, letters ) )
   assert( returns( is_eq{ 4,3,2,1 }, xduce, drop( "x,y => x<y" ),
                    appending( 1 ), {}, numbers, 4 ) )
   assert( returns( is_eq{ 4,3,2,1 }, xduce, drop( "_,y => y<4" ),
