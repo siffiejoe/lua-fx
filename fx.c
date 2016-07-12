@@ -22,6 +22,44 @@ typedef int lua_KContext;
 #define lua_load( L, r, d, s, m ) \
   ((void)m,lua_load( L, r, d, s ))
 
+static lua_Integer lua_tointegerx( lua_State* L, int i, int* isnum ) {
+  lua_Integer n = lua_tointeger( L, i );
+  if( isnum != NULL )
+    *isnum = (n != 0 || lua_isnumber( L, i ));
+  return n;
+}
+
+static void lua_len( lua_State* L, int i ) {
+  switch( lua_type( L, i ) ) {
+    case LUA_TSTRING:
+      lua_pushnumber( L, (lua_Integer)lua_objlen( L, i ) );
+      break;
+    case LUA_TTABLE:
+      if( !luaL_callmeta( L, i, "__len" ) )
+        lua_pushnumber( L, (lua_Integer)lua_objlen( L, i ) );
+      break;
+    case LUA_TUSERDATA:
+      if( luaL_callmeta( L, i, "__len" ) )
+        break;
+      /* maybe fall through */
+    default:
+      luaL_error( L, "attempt to get length of a %s value",
+                  luaL_typename( L, i ) );
+  }
+}
+
+static lua_Integer luaL_len( lua_State* L, int i ) {
+  lua_Integer n = 0;
+  int valid = 0;
+  luaL_checkstack( L, 1, "luaL_len" );
+  lua_len( L, i );
+  n = lua_tointegerx( L, -1, &valid );
+  lua_pop( L, 1 );
+  if( !valid )
+    luaL_error( L, "object length is not an integer" );
+  return n;
+}
+
 #endif /* LUA_VERSION_NUM < 502 */
 
 
@@ -133,6 +171,21 @@ static int is_sequence( lua_State* L, int i ) {
 }
 #define check_sequence( L, i ) \
   (luaL_argcheck( L, is_sequence( L, i ), i, "sequence expected" ))
+
+
+static lua_Integer check_n( lua_State* L, int i ) {
+  lua_Integer n = 0;
+  int valid = 0;
+  check_sequence( L, i );
+  lua_getfield( L, i, "n" );
+  if( lua_type( L, -1 ) != LUA_TNIL ) {
+    n = lua_tointegerx( L, -1, &valid );
+    lua_pop( L, 1 );
+    luaL_argcheck( L, valid && n >= 0, i, "no valid '.n'" );
+  } else
+    n = luaL_len( L, i );
+  return n;
+}
 
 
 static void check_callable( lua_State* L, int i ) {
@@ -654,7 +707,8 @@ static int map_reducer( lua_State* L ) {
 
 
 LUA_KFUNCTION( mapk ) {
-  int nx = 0, i = 1, j = 1;
+  lua_Integer i = 1, len;
+  int nx, j;
   (void)status;
   switch( ctx ) {
     case 0:
@@ -662,40 +716,36 @@ LUA_KFUNCTION( mapk ) {
       if( lua_isfunction( L, 2 ) ) {
         lua_settop( L, 2 );
         lua_pushcclosure( L, map_reducer, 2 );
-        return 1;
       } else if( luaL_getmetafield( L, 2, "__map@fx" ) ) {
         lua_insert( L, 1 );
         lua_callk( L, lua_gettop( L )-1, 1, 1, mapk );
-    case 1: /* result */
-        return 1;
       } else { /* work on sequence(-like object) */
-        check_sequence( L, 2 );
+        len = check_n( L, 2 );
         nx = lua_gettop( L )-2;
         lua_pushinteger( L, 1 ); /* store current iteration index */
-        lua_newtable( L ); /* result table */
+        lua_pushinteger( L, len ); /* store length on stack */
+        lua_createtable( L, len, 1 ); /* result table */
+        lua_pushvalue( L, -2 );
+        lua_setfield( L, -2, "n" ); /* ... with an 'n' field */
         luaL_checkstack( L, nx+2+LUA_MINSTACK, "map" );
-        do { /* func, array, x_1, ..., x_n, i, res */
+        while( i <= len ) { /* f, t, x_1, ..., x_n, i, len, res */
           lua_pushvalue( L, 1 );
-          lua_pushvalue( L, -3 );
+          lua_pushvalue( L, -4 );
           lua_gettable( L, 2 );
-          if( lua_isnil( L, -1 ) ) {
-            lua_pop( L, 2 );
-            return 1;
-          }
           for( j = 3; j <= nx+2; ++j )
             lua_pushvalue( L, j );
           lua_callk( L, nx+1, 1, 2, mapk );
-    case 2: /* func, array, x_1, ..., x_n, i, res, v */
-          nx = lua_gettop( L )-5;
+    case 2: /* f, t, x_1, ..., x_n, i, len, res, v */
+          nx = lua_gettop( L )-6;
           i = lua_tointeger( L, nx+3 );
-          lua_rawseti( L, nx+4, i );
+          len = lua_tointeger( L, nx+4 );
+          lua_rawseti( L, nx+5, i );
           lua_pushinteger( L, ++i );
           lua_replace( L, nx+3 ); /* update i */
-        } while( 1 );
+        }
       }
   }
-  /* should never happen: */
-  return luaL_error( L, "invalid ctx in map function" );
+  return 1;
 }
 
 static int map( lua_State* L ) {
@@ -737,7 +787,8 @@ static int filter_reducer( lua_State* L ) {
 
 
 LUA_KFUNCTION( filterk ) {
-  int nx = 0, i = 1, j = 1;
+  lua_Integer i = 1, j = 1, len;
+  int nx, k;
   (void)status;
   switch( ctx ) {
     case 0:
@@ -745,44 +796,42 @@ LUA_KFUNCTION( filterk ) {
       if( lua_isfunction( L, 2 ) ) {
         lua_settop( L, 2 );
         lua_pushcclosure( L, filter_reducer, 2 );
-        return 1;
       } else { /* work on sequence(-like object) */
-        check_sequence( L, 2 );
+        len = check_n( L, 2 );
         nx = lua_gettop( L )-2;
         lua_pushinteger( L, 1 ); /* store current iteration index */
+        lua_pushvalue( L, -1 ); /* store current target index */
+        lua_pushinteger( L, len ); /* store length on stack */
         lua_newtable( L ); /* result table */
-        lua_pushinteger( L, 1 ); /* store current target index */
         luaL_checkstack( L, nx+3+LUA_MINSTACK, "filter" );
-        do { /* pred, array, x_1, ..., x_n, i, res, j */
-          lua_pushvalue( L, -3 );
+        while( i <= len ) { /* p, t, x_1, ..., x_n, i, j, len, res */
+          lua_pushvalue( L, nx+3 );
           lua_gettable( L, 2 );
-          if( lua_isnil( L, -1 ) ) {
-            lua_pop( L, 2 );
-            return 1;
-          }
           lua_pushvalue( L, 1 );
           lua_pushvalue( L, -2 );
-          for( j = 3; j <= nx+2; ++j )
-            lua_pushvalue( L, j );
+          for( k = 3; k <= nx+2; ++k )
+            lua_pushvalue( L, k );
           lua_callk( L, nx+1, 1, 1, filterk );
-    case 1: /* pred, array, x_1, ..., x_n, i, res, j, v, r */
-          nx = lua_gettop( L )-7;
+    case 1: /* p, t, x_1, ..., x_n, i, j, len, res, v, r */
+          nx = lua_gettop( L )-8;
           i = lua_tointeger( L, nx+3 );
-          j = lua_tointeger( L, nx+5 );
+          j = lua_tointeger( L, nx+4 );
+          len = lua_tointeger( L, nx+5 );
           if( lua_toboolean( L, -1 ) ) {
             lua_pop( L, 1 );
-            lua_rawseti( L, nx+4, j );
+            lua_rawseti( L, nx+6, j );
             lua_pushinteger( L, ++j );
-            lua_replace( L, nx+5 ); /* update j */
+            lua_replace( L, nx+4 ); /* update j */
           } else
             lua_pop( L, 2 );
           lua_pushinteger( L, ++i );
           lua_replace( L, nx+3 ); /* update i */
-        } while( 1 );
+        }
+        lua_pushinteger( L, j-1 );
+        lua_setfield( L, -2, "n" );
       }
   }
-  /* should never happen: */
-  return luaL_error( L, "invalid ctx in filter function" );
+  return 1;
 }
 
 static int filter( lua_State* L ) {
@@ -859,77 +908,77 @@ static int take_n_reducer( lua_State* L ) {
 
 
 LUA_KFUNCTION( takek ) {
-  int nx = 0, i = 1, j = 1;
+  lua_Integer i = 1, j = 1, len;
+  int nx, k;
   (void)status;
   switch( ctx ) {
     case 0:
       if( lua_type( L, 1 ) == LUA_TNUMBER ) { /* -> take-n */
-        int n = luaL_checkinteger( L, 1 );
+        lua_Integer n = luaL_checkinteger( L, 1 );
+        luaL_argcheck( L, n >= 0, 1, "negative number" );
         if( lua_isfunction( L, 2 ) ) {
           lua_settop( L, 2 );
           lua_pushcclosure( L, take_n_reducer, 2 );
-          return 1;
         } else { /* work on sequence(-like object) */
-          check_sequence( L, 2 );
+          len = check_n( L, 2 );
+          if( n > len )
+            n = len;
           lua_settop( L, 2 );
-          lua_newtable( L ); /* result table */
-          while( i <= n ) { /* n, array, res */
+          lua_createtable( L, n, 1 ); /* result table */
+          lua_pushinteger( L, n );
+          lua_setfield( L, -2, "n" ); /* ... with an 'n' field */
+          while( i <= n ) { /* n, t, res */
             lua_pushinteger( L, i++ );
             lua_pushvalue( L, -1 );
             lua_gettable( L, 2 );
-            if( lua_isnil( L, -1 ) ) {
-              lua_pop( L, 2 );
-              return 1;
-            }
             lua_rawset( L, -3 );
           }
-          return 1;
         }
       } else { /* -> take-while */
         check_callable( L, 1 );
         if( lua_isfunction( L, 2 ) ) {
           lua_settop( L, 2 );
           lua_pushcclosure( L, take_while_reducer, 2 );
-          return 1;
         } else { /* work on sequence(-like object) */
-          check_sequence( L, 2 );
+          len = check_n( L, 2 );
           nx = lua_gettop( L )-2;
           lua_pushinteger( L, 1 ); /* store current iteration index */
+          lua_pushvalue( L, -1 ); /* store current target index */
+          lua_pushinteger( L, len ); /* store length on stack */
           lua_newtable( L ); /* result table */
-          lua_pushinteger( L, 1 ); /* store current target index */
           luaL_checkstack( L, nx+3+LUA_MINSTACK, "take (while)" );
-          do { /* pred, array, x_1, ..., x_n, i, res, j */
+          while( i <= len ) { /* p, t, x_1, ..., x_n, i, j, len, res */
             lua_pushvalue( L, nx+3 );
             lua_gettable( L, 2 );
-            if( lua_isnil( L, -1 ) ) {
-              lua_pop( L, 2 );
-              return 1;
-            }
             lua_pushvalue( L, 1 );
             lua_pushvalue( L, -2 );
-            for( j = 3; j <= nx+2; ++j )
-              lua_pushvalue( L, j );
+            for( k = 3; k <= nx+2; ++k )
+              lua_pushvalue( L, k );
             lua_callk( L, nx+1, 1, 1, takek );
-    case 1: /* pred, array, x_1, ..., x_n, i, res, j, v, r */
+    case 1: /* p, t, x_1, ..., x_n, i, j, len, res, v, r */
+            nx = lua_gettop( L )-8;
+            i = lua_tointeger( L, nx+3 );
+            j = lua_tointeger( L, nx+4 );
+            len = lua_tointeger( L, nx+5 );
             if( !lua_toboolean( L, -1 ) ) {
-              lua_pop( L, 3 );
+              lua_pop( L, 2 );
+              lua_pushinteger( L, j-1 );
+              lua_setfield( L, -2, "n" );
               return 1;
             }
-            nx = lua_gettop( L )-7;
-            i = lua_tointeger( L, nx+3 );
-            j = lua_tointeger( L, nx+5 );
             lua_pop( L, 1 );
-            lua_rawseti( L, nx+4, j );
+            lua_rawseti( L, nx+6, j );
             lua_pushinteger( L, ++j );
-            lua_replace( L, nx+5 ); /* update j */
+            lua_replace( L, nx+4 ); /* update j */
             lua_pushinteger( L, ++i );
             lua_replace( L, nx+3 ); /* update i */
-          } while( 1 );
+          }
+          lua_pushinteger( L, j-1 );
+          lua_setfield( L, -2, "n" );
         }
       }
   }
-  /* should never happen: */
-  return luaL_error( L, "invalid ctx in take function" );
+  return 1;
 }
 
 static int take( lua_State* L ) {
@@ -1006,61 +1055,56 @@ static int drop_n_reducer( lua_State* L ) {
 
 
 LUA_KFUNCTION( dropk ) {
-  int nx = 0, i = 1, j = 1, k = 1, doassign = 0;
+  lua_Integer i = 1, j = 1, len;
+  int nx, k, doassign = 0;
   (void)status;
   switch( ctx ) {
     case 0:
       if( lua_type( L, 1 ) == LUA_TNUMBER ) { /* -> drop-n */
-        int n = luaL_checkinteger( L, 1 );
+        lua_Integer n = luaL_checkinteger( L, 1 );
+        luaL_argcheck( L, n >= 0, 1, "negative number" );
         if( lua_isfunction( L, 2 ) ) {
           lua_settop( L, 2 );
           lua_pushcclosure( L, drop_n_reducer, 2 );
-          return 1;
         } else { /* work on sequence(-like object) */
-          check_sequence( L, 2 );
+          len = check_n( L, 2 );
           lua_settop( L, 2 );
-          lua_newtable( L ); /* result table */
-          do { /* n, array, res */
-            lua_pushinteger( L, i );
+          if( n > len )
+            n = len;
+          lua_createtable( L, len-n, 1 ); /* result table */
+          lua_pushinteger( L, len-n );
+          lua_setfield( L, -2, "n" ); /* ... with an 'n' field */
+          while( n < len ) { /* n, t, res */
+            lua_pushinteger( L, ++n );
             lua_gettable( L, 2 );
-            if( lua_isnil( L, -1 ) ) {
-              lua_pop( L, 1 );
-              return 1;
-            }
-            if( i++ > n )
-              lua_rawseti( L, -2, j++ );
-            else
-              lua_pop( L, 1 );
-          } while( 1 );
+            lua_rawseti( L, 3, i++ );
+          }
         }
       } else {
         check_callable( L, 1 );
         if( lua_isfunction( L, 2 ) ) {
           lua_settop( L, 2 );
           lua_pushcclosure( L, drop_while_reducer, 2 );
-          return 1;
         } else { /* work on sequence(-like object) */
-          check_sequence( L, 2 );
+          len = check_n( L, 2 );
           nx = lua_gettop( L )-2;
           lua_pushinteger( L, 1 ); /* store current iteration index */
+          lua_pushinteger( L, len ); /* store length on stack */
           lua_newtable( L ); /* result table */
           luaL_checkstack( L, nx+3+LUA_MINSTACK, "drop (while)" );
-          do { /* pred, array, x_1, ..., x_n, i, res */
+          while( i <= len ) { /* p, t, x_1, ..., x_n, i, len, res */
             lua_pushinteger( L, i );
             lua_gettable( L, 2 );
-            if( lua_isnil( L, -1 ) ) {
-              lua_pop( L, 1 );
-              return 1;
-            }
             if( !doassign ) {
               lua_pushvalue( L, 1 );
               lua_pushvalue( L, -2 );
               for( k = 3; k <= nx+2; ++k )
                 lua_pushvalue( L, k );
               lua_callk( L, nx+1, 1, 1, dropk );
-    case 1: /* pred, array, x_1, ..., x_n, i, res, v, r */
-              nx = lua_gettop( L )-6;
+    case 1: /* pred, array, x_1, ..., x_n, i, len, res, v, r */
+              nx = lua_gettop( L )-7;
               i = lua_tointeger( L, nx+3 );
+              len = lua_tointeger( L, nx+4 );
               if( !lua_toboolean( L, -1 ) )
                 doassign = 1;
               lua_pop( L, 1 );
@@ -1073,12 +1117,13 @@ LUA_KFUNCTION( dropk ) {
               lua_pushinteger( L, ++i );
               lua_replace( L, nx+3 );
             }
-          } while( 1 );
+          }
+          lua_pushinteger( L, j-1 );
+          lua_setfield( L, -2, "n" );
         }
       }
   }
-  /* should never happen: */
-  return luaL_error( L, "invalid ctx in drop function" );
+  return 1;
 }
 
 static int drop( lua_State* L ) {
@@ -1088,7 +1133,8 @@ static int drop( lua_State* L ) {
 
 
 LUA_KFUNCTION( reducek ) {
-  int nx = 0, i = 1, j = 1;
+  lua_Integer i = 1, len;
+  int nx, j;
   (void)status;
   /* use Duff's Device to allow yielding from multiple places */
   switch( ctx ) {
@@ -1121,36 +1167,36 @@ LUA_KFUNCTION( reducek ) {
           lua_replace( L, 2 );
         } while( 1 );
       } else { /* plain sequence(-like object) */
-        check_sequence( L, 3 );
+        len = check_n( L, 3 );
         nx = lua_gettop( L )-3;
+        lua_pushinteger( L, len ); /* store length on stack */
         lua_pushinteger( L, 1 ); /* store current iteration index */
         luaL_checkstack( L, nx+3+LUA_MINSTACK, "reduce" );
-        do { /* fun, init, array, x_1, ..., x_n, i */
+        while( i <= len ) { /* f, init, t, x_1, ..., x_n, len, i */
           lua_pushvalue( L, 1 );
           lua_pushvalue( L, 2 );
           lua_pushvalue( L, -3 );
           lua_gettable( L, 3 );
-          if( lua_isnil( L, -1 ) ) {
-            lua_settop( L, 2 );
-            return 1;
-          }
           for( j = 4; j <= nx+3; ++j )
             lua_pushvalue( L, j );
           lua_callk( L, nx+2, 2, 3, reducek );
-    case 3: /* fun, init, array, x_1, ..., x_n, i, val, signal */
+    case 3: /* f, init, t, x_1, ..., x_n, len, i, val, signal */
           if( is_stop( L, -1 ) ) {
             lua_pop( L, 1 );
             return 1;
           }
           lua_pop( L, 1 );
           lua_replace( L, 2 );
-          nx = lua_gettop( L )-4;
+          nx = lua_gettop( L )-5;
+          len = lua_tointeger( L, -2 );
           i = lua_tointeger( L, -1 );
           lua_pop( L, 1 );
           lua_pushinteger( L, ++i );
-        } while( 1 );
+        }
+        lua_settop( L, 2 );
+        return 1;
       }
-  };
+  }
   /* should never happen: */
   return luaL_error( L, "invalid ctx in reduce function" );
 }

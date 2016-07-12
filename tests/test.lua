@@ -3,8 +3,9 @@
 local fx = require( "fx" )()
 
 
-local letters = { "a", "b", "c", "d", "e", "f" }
-local numbers = { 1, 2, 3, 4, 3, 2, 1 }
+local letters = { "a", "b", "c", "d", "e", "f", "g", n=6 }
+local numbers = { 1, 2, 3, 4, 3, 2, 1, 0, n=7 }
+local numbers2 = { 1, 2, 3, 4, 3, 2, 1, 0 }
 
 
 
@@ -136,7 +137,8 @@ end
 
 local function test_map()
   local function dp( v, w ) return 2 * v + w end
-  assert( returns( is_eq{ 3,5,7,9,7,5,3 }, map, dp, numbers, 1 ) )
+  assert( returns( is_eq{ 3,5,7,9,7,5,3,n=7 }, map, dp, numbers, 1 ) )
+  assert( returns( is_eq{ 3,5,7,9,7,5,3,1,n=8 }, map, dp, numbers2, 1 ) )
   local function dpy( v, w )
     coroutine.yield( "yield", v )
     return 2 * v + w
@@ -149,7 +151,7 @@ local function test_map()
                          {}, resp( "yield",3 ),
                          {}, resp( "yield",2 ),
                          {}, resp( "yield",1 ),
-                         {}, is_eq{ 3,5,7,9,7,5,3 } ) )
+                         {}, is_eq{ 3,5,7,9,7,5,3,n=7 } ) )
   end
   local function inc( x, v ) return x+v end
   local Identity_meta = {}
@@ -166,7 +168,7 @@ local function test_map()
                    appending( 1 ), {}, numbers, 1 ) )
   assert( returns( is_eq{ 3,5,7,9,7,5,3 }, reduce,
                    map( dp, appending( 1 ) ), {}, numbers, 1 ) )
-  assert( returns( is_eq{ 2,4,6,8,6,4,2 },
+  assert( returns( is_eq{ 2,4,6,8,6,4,2,0 },
                    xduce, map"_,y => 2*y", appending( 1 ), {},
                    ipairs( numbers ) ) )
   if _VERSION ~= "Lua 5.1" then
@@ -187,7 +189,8 @@ local function test_filter()
   local function rem( v, d, r )
     return v % d == r
   end
-  assert( returns( is_eq{2,4,2}, filter, rem, numbers, 2, 0 ) )
+  assert( returns( is_eq{ 2,4,2,n=3 }, filter, rem, numbers, 2, 0 ) )
+  assert( returns( is_eq{ 2,4,2,0,n=4 }, filter, rem, numbers2, 2, 0 ) )
   local function remy( v, d, r )
     coroutine.yield( "yield", v )
     return v % d == r
@@ -200,14 +203,14 @@ local function test_filter()
                             {}, resp( "yield",3 ),
                             {}, resp( "yield",2 ),
                             {}, resp( "yield",1 ),
-                            {}, is_eq{ 1,3,3,1 } ) )
+                            {}, is_eq{ 1,3,3,1,n=4 } ) )
   end
   assert( returns( is_function, filter, rem ) )
   assert( returns( is_eq{ 1,3,3,1 }, xduce, filter( rem ),
                    appending( 1 ), {}, numbers, 2, 1 ) )
   assert( returns( is_eq{ 1,3,3,1 }, reduce,
                    filter( rem, appending( 1 ) ), {}, numbers, 2, 1 ) )
-  assert( returns( is_eq{ 2,4,2 }, xduce, filter"_,y => y%2==0",
+  assert( returns( is_eq{ 2,4,2,0 }, xduce, filter"_,y => y%2==0",
                    appending( 2 ), {}, ipairs( numbers ) ) )
   if _VERSION ~= "Lua 5.1" then
     assert( yields( xduce,
@@ -225,10 +228,12 @@ end
 
 
 local function test_take()
-  assert( returns( is_eq{ "a","b","c" }, take, 3, letters ) )
+  assert( returns( is_eq{ "a","b","c",n=3 }, take, 3, letters ) )
+  assert( returns( is_eq{ 1,2,3,n=3 }, take, 3, numbers2 ) )
   local function lt4( v ) return v < 4 end
-  assert( returns( is_eq{ 1,2,3 }, take, lt4, numbers ) )
-  assert( returns( is_eq{ 1,2 }, take, "x,y => x<y", numbers, 3 ) )
+  assert( returns( is_eq{ 1,2,3,n=3 }, take, lt4, numbers ) )
+  assert( returns( is_eq{ 1,2,3,n=3 }, take, lt4, numbers2 ) )
+  assert( returns( is_eq{ 1,2,n=2 }, take, "x,y => x<y", numbers, 3 ) )
   local function lt4y( v )
     coroutine.yield( "yield", v )
     return v < 4
@@ -238,7 +243,7 @@ local function test_take()
                           {}, resp( "yield",2 ),
                           {}, resp( "yield",3 ),
                           {}, resp( "yield",4 ),
-                          {}, is_eq{ 1,2,3 } ) )
+                          {}, is_eq{ 1,2,3,n=3 } ) )
   end
   assert( returns( is_function, take, 2 ) )
   assert( returns( is_function, take, lt4 ) )
@@ -265,10 +270,12 @@ end
 
 
 local function test_drop()
-  assert( returns( is_eq{ "d","e","f" }, drop, 3, letters ) )
+  assert( returns( is_eq{ "d","e","f",n=3 }, drop, 3, letters ) )
+  assert( returns( is_eq{ 4,3,2,1,0,n=5 }, drop, 3, numbers2 ) )
   local function lt( x, y ) return x < y end
-  assert( returns( is_eq{ 4,3,2,1 }, drop, lt, numbers, 4 ) )
-  assert( returns( is_eq{ 4,3,2,1 }, drop, "x,y => x<y", numbers, 4 ) )
+  assert( returns( is_eq{ 4,3,2,1,n=4 }, drop, lt, numbers, 4 ) )
+  assert( returns( is_eq{ 4,3,2,1,0,n=5 }, drop, lt, numbers2, 4 ) )
+  assert( returns( is_eq{ 4,3,2,1,n=4 }, drop, "x,y => x<y", numbers, 4 ) )
   local function lty( x, y )
     coroutine.yield( "yield", x )
     return x < y
@@ -278,7 +285,7 @@ local function test_drop()
                           {}, resp( "yield",2 ),
                           {}, resp( "yield",3 ),
                           {}, resp( "yield",4 ),
-                          {}, is_eq{ 4,3,2,1 } ) )
+                          {}, is_eq{ 4,3,2,1,n=4 } ) )
   end
   assert( returns( is_function, drop, 2 ) )
   assert( returns( is_function, drop, lt ) )
@@ -288,7 +295,7 @@ local function test_drop()
                    drop( 4, appending( 1 ) ), {}, letters ) )
   assert( returns( is_eq{ 4,3,2,1 }, xduce, drop( "x,y => x<y" ),
                    appending( 1 ), {}, numbers, 4 ) )
-  assert( returns( is_eq{ 4,3,2,1 }, xduce, drop( "_,y => y<4" ),
+  assert( returns( is_eq{ 4,3,2,1,0 }, xduce, drop( "_,y => y<4" ),
                    appending( 2 ), {}, ipairs( numbers ) ) )
   if _VERSION ~= "Lua 5.1" then
     assert( yields( xduce, { drop( lty ),appending( 1 ),{},numbers,4 },
@@ -326,6 +333,15 @@ local function test_reduce()
                             {}, resp( "yield",2 ),
                             {}, resp( "yield",1 ),
                             {}, 23 ) )
+    assert( yields( reduce, { y1,0,numbers2,1 }, resp( "yield",1 ),
+                            {}, resp( "yield",2 ),
+                            {}, resp( "yield",3 ),
+                            {}, resp( "yield",4 ),
+                            {}, resp( "yield",3 ),
+                            {}, resp( "yield",2 ),
+                            {}, resp( "yield",1 ),
+                            {}, resp( "yield",0 ),
+                            {}, 24 ) )
     local function y2( s, x )
       coroutine.yield( "yield", x )
       return s+x

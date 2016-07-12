@@ -75,6 +75,16 @@ temporary copies of the iterated data structure.
   [2]: http://blog.cognitect.com/blog/2014/8/6/transducers-are-coming
 
 
+###                            Sequences                           ###
+
+Whenever this README mentions that a function operates on a sequence,
+the usual Lua definition is assumed, i.e. a table for which the length
+operator `#` is defined. However, if the table has a positive numeric
+`.n` field (like in the table returned by `table.pack()`), that value
+takes precedence, and the table may contain holes. Resulting tables
+always have an `.n` field set.
+
+
 ##                             Reference                            ##
 
 *   `fx.has( s ) ==> f`
@@ -253,10 +263,10 @@ temporary copies of the iterated data structure.
 
     Otherwise the third argument is assumed to be a sequence(-like
     object) which is indexed using consecutive integers starting from
-    `1` and ending at the first `nil` value. The function `fun` is
-    called for every value `v`: `fun( state, v, ... )`. Extra
-    arguments to `fx.reduce` are passed as additional arguments to
-    every reducing function call.
+    `1` and ending at the value of the `n` field or the result of the
+    length operator. The function `fun` is called for every value `v`:
+    `fun( state, v, ... )`. Extra arguments to `fx.reduce` are passed
+    as additional arguments to every reducing function call.
 
     `fx.reduce` can also be used to execute transducers, because a
     transducer, when called with a reducing function as argument,
