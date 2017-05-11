@@ -2,7 +2,7 @@
 
 package.path = "../?.lua;"..package.path
 require( "fx" )()
-local lenses = require( "fx.lenses" )()
+require( "fx.lenses" )()
 local serpent = require( "serpent" )
 
 
@@ -73,48 +73,23 @@ local function sendEmail( addr )
 end
 
 -- create primitive lenses
-local L = makeLenses( "friends", "email", "name", "sex", "foo" )
+local L = {
+  friends = tablelens"friends",
+  email = tablelens"email",
+  name = tablelens"name",
+}
+L.firstFriend = compose( L.friends, tablelens( 1 ) )
+L.firstFriendEmail = compose( L.firstFriend, L.email )
 
 -- query/modify data structure:
-local t = {}
-print( "fx.lenses", lenses( t ), lenses )
-for k, v in pairs( t ) do
-  print( k, v )
-end
 print( ("-"):rep( 70 ) )
 p( "query name", view( L.name, user ) )
 p( "query friends", view( L.friends, user ) )
 p( "modify name", over( L.name, replace( "E", "***" ), user ) )
 p( "set name", set( L.name, "Esmeralda", user ) )
 p( "set friends to empty array", set( L.friends, {}, user ) )
-L.firstFriend = compose( L.friends, L.indexed( 1 ) )
 p( "query first friend", view( L.firstFriend, user ) )
 p( "set first friend", set( L.firstFriend, newfriend, user ) )
-L.firstFriendEmail = compose( L.firstFriend, L.email )
 p( "change email of first friend", over( L.firstFriendEmail, string.upper, user ) )
-L.friendsEmail = compose( L.friends, L.mapped, L.email )
-local emailFriends = compose( concat( "Emailed friends of " ),
-                              view( L.name ),
-                              over( L.friendsEmail, sendEmail ) )
-p( emailFriends( user ) )
-p( "view all friends' email", view( L.friendsEmail, user ) )
-p( "set all friends' email", set( L.friendsEmail, "none@anonymous.org", user ) )
-L.mapped3 = compose( L.mapped, L.mapped, L.mapped )
-p( "modify nested arrays", over( L.mapped3, add( 1 ), {{{ 1, 2 }, { 3, 4 }}} ) )
-L.mapped2 = compose( L.mapped, L.mapped )
-p( "view nested arrays", view( L.mapped2, { { 1 }, { 2 } } ) )
-L.friendsFooFoo = compose( L.friends, L.mapped, L.foo, L.foo )
-p( "view nonexisting (1)", view( L.friendsFooFoo, {} ) )
-p( "view nonexisting (2)", view( L.friendsFooFoo, user ) )
-p( "set nonexisting", set( L.friendsFooFoo, "x@y.z", user ) )
-L.femaleFriends = compose( L.friends, L.filtered( isfemale ) )
-L.femaleFriendsNames = compose( L.femaleFriends, L.name )
-L.femaleFriendsSex = compose( L.femaleFriends, L.sex )
-p( "view names of female friends", view( L.femaleFriendsNames, user ) )
-p( "change sex of female friends", set( L.femaleFriendsSex, "m", user ) )
-L.friendsStringProps = compose( L.friends, L.mapped, L.selected( isstring ) )
-p( "view all friends' string properties", view( L.friendsStringProps, user ) )
-p( "change all friends' string properties", over( L.friendsStringProps, string.upper, user ) )
-
 p( "original user is unchanged", user )
 
