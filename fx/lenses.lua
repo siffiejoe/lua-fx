@@ -69,11 +69,9 @@ return setmetatable( {
   tablelens = tablelens,
 }, { __call = function( M, t )
   t = t or _G
-  t.view = M.view
-  t.over = M.over
-  t.set = M.set
-  t.lens = M.lens
-  t.tablelens = M.tablelens
+  for k,v in pairs( M ) do
+    t[ k ] = v
+  end
   return M
 end } )
 
