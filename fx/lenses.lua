@@ -1,4 +1,5 @@
 local fx = require( "fx" )
+local pairs = assert( pairs )
 
 
 -- Instead of the functors Identity and Const, we use an explicit
