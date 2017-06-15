@@ -1,5 +1,4 @@
 local type = assert( type )
-local select = assert( select )
 local setmetatable = assert( setmetatable )
 local fx = require( "fx.core" )
 local compose = assert( fx.compose )
