@@ -22,7 +22,7 @@ setmetatable( Table, {
 } )
 
 
-function Table:fmap( f )
+function Table:map( f )
   local n = #self
   if n < 1 then
     return self

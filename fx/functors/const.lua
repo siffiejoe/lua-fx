@@ -28,7 +28,7 @@ function Const:get()
 end
 
 
-function Const:fmap()
+function Const:map()
   return self
 end
 
@@ -52,7 +52,7 @@ return function( t )
       } )
 
       C.get = Const.get
-      C.fmap = Const.fmap
+      C.map = Const.map
       M.__tostring = Meta.__tostring
 
       function C.pure()

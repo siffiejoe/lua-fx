@@ -53,7 +53,7 @@ local function fmap( self, f )
     return Just( f( self:get() ) )
   end
 end
-Just.fmap, None.fmap = fmap, fmap
+Just.map, None.map = fmap, fmap
 
 
 local function pure( v )

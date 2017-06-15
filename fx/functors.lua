@@ -2,7 +2,7 @@ local assert = assert
 local error = assert( error )
 local setmetatable = assert( setmetatable )
 local require = assert( require )
-local fx = require( "fx" )
+local fx = require( "fx.core" )
 local curry = assert( fx.curry )
 local compose = assert( fx.compose )
 
@@ -37,12 +37,8 @@ local function pure_virtual()
 end
 
 
-local function map_metamethod( f, v )
-  return v:fmap( f )
-end
-
 local function fmap_operator( v, f )
-  return v:fmap( f )
+  return v:map( f )
 end
 
 local function apply_operator( f, v )
@@ -69,9 +65,8 @@ local function makeFunctor( name )
   local t, mt = makeType( name )
   if not t.isFunctor then
     t.isFunctor = true
-    t.fmap = pure_virtual
+    t.map = pure_virtual
     mt.__mod = fmap_operator
-    mt[ "__map@fx" ] = map_metamethod
   end
   return t, mt
 end
@@ -85,11 +80,10 @@ local function makeApplicative( name )
   local t, mt = makeType( name )
   if not t.isApplicative then
     t.isFunctor, t.isApplicative = true, true
-    if t.fmap == nil or t.fmap == pure_virtual then
-      t.fmap = applicative_default_fmap
+    if t.map == nil or t.map == pure_virtual then
+      t.map = applicative_default_fmap
     end
     mt.__mod = fmap_operator
-    mt[ "__map@fx" ] = map_metamethod
     t.pure = pure_virtual
     t.apply = pure_virtual
     mt.__mul = apply_operator
@@ -105,7 +99,7 @@ end
 local function monad_default_apply( self, f )
   assert( f.isMonad, "Monad expected" )
   return f:bind( function( g )
-    return self:fmap( g )
+    return self:map( g )
   end )
 end
 
@@ -113,11 +107,10 @@ local function makeMonad( name )
   local t, mt = makeType( name )
   if not t.isMonad then
     t.isFunctor, t.isApplicative, t.isMonad = true, true, true
-    if t.fmap == nil or t.fmap == pure_virtual then
-      t.fmap = monad_default_fmap
+    if t.map == nil or t.map == pure_virtual then
+      t.map = monad_default_fmap
     end
     mt.__mod = fmap_operator
-    mt[ "__map@fx" ] = map_metamethod
     if t.pure == nil then t.pure = pure_virtual end
     if t.apply == nil or t.apply == pure_virtual then
       t.apply = monad_default_apply
@@ -132,7 +125,7 @@ end
 
 local function fmap( f, v )
   assert( v.isFunctor, "Functor expected" )
-  return v:fmap( f )
+  return v:map( f )
 end
 
 local function apply( f, v )
@@ -147,17 +140,17 @@ end
 
 local function lift2( f, a, b )
   assert( a.isApplicative, "Applicative functor expected" )
-  return b:apply( a:fmap( curry( 2, f ) ) )
+  return b:apply( a:map( curry( 2, f ) ) )
 end
 
 local function lift3( f, a, b, c )
   assert( a.isApplicative, "Applicative functor expected" )
-  return c:apply( b:apply( a:fmap( curry( 3, f ) ) ) )
+  return c:apply( b:apply( a:map( curry( 3, f ) ) ) )
 end
 
 local function lift4( f, a, b, c, d )
   assert( a.isApplicative, "Applicative functor expected" )
-  return d:apply( c:apply( b:apply( a:fmap( curry( 4, f ) ) ) ) )
+  return d:apply( c:apply( b:apply( a:map( curry( 4, f ) ) ) ) )
 end
 
 -- return module table

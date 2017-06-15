@@ -303,11 +303,12 @@ expression has the following format:
 ```lua
 <arg> [,<arg>]* => [<expr> [, <expr>]*]
 ```
-The string is compiled into a Lua function on-the-fly using
-`lua_load()`, so the following two lines are roughly equivalent:
+Vararg lists are supported as well. The string is compiled into a Lua
+function on-the-fly using `lua_load()`, so the following two lines are
+roughly equivalent:
 ```lua
 local f = fx.compose( "x,y => x+y, x*y" )
-local g = fx.compose( load( "local x,y=...; return x+y, x*y" ) )
+local g = fx.compose( load( "return function(x,y) return x+y, x*y end" )() )
 ```
 There is no caching/memoization going on, so be aware of the
 performance implications if you do this in a tight loop. In fact, it
@@ -325,11 +326,13 @@ The following functions accept short lambda expressions: `fx.curry`,
 Unlike many functional programming languages, Lua supports multiple
 return values. This makes composing functions more powerful, but it
 also increases the chances of a mismatch between what one function
-provides and the next one expects. The `fx.glue` module provides glue
-functions that transform argument or return value lists. It is similar
-in scope to the [`vararg`][4] module, but since it is intended to be
-used with `compose`, the glue functions in this module create closures
-that do the actual vararg manipulation.
+provides and the next one expects. Most common cases can (and should)
+be handled with string lambdas, but for some akward situations the
+`fx.glue` module provides glue functions that transform argument or
+return value lists. It is similar in scope to the [`vararg`][4]
+module, but since it is intended to be used with `compose`, the glue
+functions in this module create closures that do the actual vararg
+manipulation.
 
 The following glue functions are provided:
 
@@ -349,21 +352,10 @@ The following glue functions are provided:
     return multiple values as usual. `vtransform` accepts short
     lambdas.
 
-*   `vdup( idx [, n] ) ==> f`
-
-    Returns a glue function that duplicates `n` elements at index
-    `idx`. The duplicated elements are inserted right before `idx`.
-    The default value of `n` is `1`.
-
 *   `vinsert( idx, v, ... ) ==> f`
 
     Returns a glue function that inserts all values `v, ...` before
     index `idx`. Using `nil` as `idx` will append to the vararg list.
-
-*   `vremove( idx [, n] ) ==> f`
-
-    Returns a glue function that removes the `n` arguments starting at
-    index `idx`. `n` defaults to `1`.
 
 *   `vreplace( idx, v, ... ) ==> f`
 
@@ -380,22 +372,9 @@ The following glue functions are provided:
 
     Returns a glue function that right shifts all arguments starting
     at index `idx1` by `n` positions, reinserting the values that fall
-    off at the beginning. `n` may be negative (to do a left shift) and
+    off at index `idx1`. `n` may be negative (to do a left shift) and
     defaults to `1`. `idx` defaults to `1` as well. (This is basically
     an interface to the `lua_rotate()` API function.)
-
-*   `vtake( n ) ==> f`
-
-    Returns a glue function that expands/shrinks the argument list to
-    exactly `n` elements. This is basically an interface to the
-    `lua_settop()` API function, but negative numbers are also
-    supported to specify sizes relative to the current number of
-    arguments.
-
-*   `vnot( idx ) ==> f`
-
-    Returns a glue function that applies the boolean `not` operation
-    on the argument specified by `idx`.
 
   [4]: https://github.com/moteus/lua-vararg
 
@@ -419,7 +398,7 @@ Comments and feedback are always welcome.
 **FX** is *copyrighted free software* distributed under the MIT
 license (the same license as Lua 5.1). The full license text follows:
 
-    FX (c) 2013-2016 Philipp Janda
+    FX (c) 2013-2017 Philipp Janda
 
     Permission is hereby granted, free of charge, to any person obtaining
     a copy of this software and associated documentation files (the

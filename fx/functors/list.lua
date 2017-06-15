@@ -64,7 +64,7 @@ function List:toarray()
 end
 
 
-function List:fmap( f )
+function List:map( f )
   local lst, newlst, lp = self, Nil
   if self ~= Nil then
     newlst = Nil:cons( f( lst[ 1 ] ) )

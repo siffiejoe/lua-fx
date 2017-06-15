@@ -1,21 +1,30 @@
 #!/usr/bin/lua
 
-local fx = require( "fx" )()
+local fx = require( "fx" )
 
 
 local letters = { "a", "b", "c", "d", "e", "f", "g", n=6 }
 local numbers = { 1, 2, 3, 4, 3, 2, 1, 0, n=7 }
 local numbers2 = { 1, 2, 3, 4, 3, 2, 1, 0 }
+local function ones() return 1 end
 
 
+local function shift( xf )
+  return fx.compose( fx.map"_, ... => ...", xf )
+end
 
-local appending = curry( 2, function( n, state, ... )
-  state[ #state+1 ] = select( n, ... )
-  return state
-end )
+local function icollect_helper( t, i, n, f, s, var_1, ... )
+  if var_1 ~= nil then
+    local j = i + 1
+    t[ j ] = select( n, var_1, ... )
+    return icollect_helper( t, j, n, f, s, f( s, var_1 ) )
+  end
+  t.n = i
+  return t, i
+end
 
-local function xduce( xform, red, init, ... )
-  return reduce( xform( red ), init, ... )
+local function icollect( n, f, s, var )
+  return icollect_helper( {}, 0, n, f, s, f( s, var ) )
 end
 
 
@@ -27,12 +36,11 @@ local function test_fx()
   assert( is( fx, ft ) )
   assert( none( is_eq( ft ) )( fx ) )
   assert( none( fx._ )( ft._ ) )
-  assert( none( fx._ )( _G._ ) )
 end
 
 
 local function test_curry()
-  local f = curry( 3, function( a, b, c )
+  local f = fx.curry( 3, function( a, b, c )
     return a + b + c
   end )
   assert( is_function( f ) )
@@ -46,11 +54,11 @@ local function test_curry()
   assert( is( f( 1 )( 2 )( 3 ), 6 ) )
   assert( is( f()( 1, 2, 3 ), 6 ) )
   assert( is( f( 1 )()( 2, 3 ), 6 ) )
-  local g = curry( 3, "x,y,z => x+y+z" )
+  local g = fx.curry( 3, "x,y,z => x+y+z" )
   assert( is_function( g ) )
   assert( is_function( g( 1, 2 ) ) )
   assert( is( g( 1, 2 )( 3 ), 6 ) )
-  local h = curry( 4, function( ... )
+  local h = fx.curry( 4, function( ... )
     return ...
   end )
   assert( is_function( h ) )
@@ -63,14 +71,14 @@ local function test_curry()
   assert( resp( 1,2,3,4 )( h( fx._,2 )( 1,fx._ )( 3,4 ) ) )
   assert( resp( 1,2,3,4 )( h( fx._,fx._ )( 1,fx._,3 )( 2,4 ) ) )
   assert( resp( 1,2,3,4,5 )( h( fx._,2,3,4,5 )( 1 ) ) )
-  assert( is_function( curry( 2, h( 1,2,3 ) )( 4 ) ) )
-  assert( resp( 1,2,3,4,5 )( curry( 2, h( 1,2,3 ) )( 4 )( 5 ) ) )
-  assert( resp( 1,2,3,4 )( curry( 1, h( 1,2 ) )( 3 )( 4 ) ) )
-  assert( resp( 1,2,3,4 )( curry( 2, h( 1,2 ) )( 3 )( 4 ) ) )
-  assert( resp( 1,2,3,4,5 )( curry( 2, h( fx._,2,3,4 ) )( 1 )( 5 ) ) )
-  assert( resp( 1,2,3,4 )( curry( 1, h( fx._,2,3 ) )( 1 )( 4 ) ) )
+  assert( is_function( fx.curry( 2, h( 1,2,3 ) )( 4 ) ) )
+  assert( resp( 1,2,3,4,5 )( fx.curry( 2, h( 1,2,3 ) )( 4 )( 5 ) ) )
+  assert( resp( 1,2,3,4 )( fx.curry( 1, h( 1,2 ) )( 3 )( 4 ) ) )
+  assert( resp( 1,2,3,4 )( fx.curry( 2, h( 1,2 ) )( 3 )( 4 ) ) )
+  assert( resp( 1,2,3,4,5 )( fx.curry( 2, h( fx._,2,3,4 ) )( 1 )( 5 ) ) )
+  assert( resp( 1,2,3,4 )( fx.curry( 1, h( fx._,2,3 ) )( 1 )( 4 ) ) )
   if _VERSION ~= "Lua 5.1" then
-    local y = curry( 3, function( a, b, c )
+    local y = fx.curry( 3, function( a, b, c )
       coroutine.yield( "yield" )
       return a + b + c
     end )
@@ -81,15 +89,15 @@ end
 
 
 local function test_compose()
-  local add = curry( 2, function( a, b ) return a + b end )
-  local mul = curry( 2, function( a, b ) return a * b end )
-  local f = compose( add( -3 ), mul( 5 ), add( 2 ) )
-  local g = compose( mul( 5 ), add( 2 ) )
-  local h = compose( add( 2 ) )
-  local k = compose( add( 3 ), f )
+  local add = fx.curry( 2, function( a, b ) return a + b end )
+  local mul = fx.curry( 2, function( a, b ) return a * b end )
+  local f = fx.compose( add( -3 ), mul( 5 ), add( 2 ) )
+  local g = fx.compose( mul( 5 ), add( 2 ) )
+  local h = fx.compose( add( 2 ) )
+  local k = fx.compose( add( 3 ), f )
   local a1 = add( 1 )
-  local l = compose( a1, a1, a1, a1, a1, a1, a1, a1, a1, a1 )
-  local m = compose( l, l, l, l, l, l, l, l, l, l, l, l, l, l, l, l,
+  local l = fx.compose( a1, a1, a1, a1, a1, a1, a1, a1, a1, a1 )
+  local m = fx.compose( l, l, l, l, l, l, l, l, l, l, l, l, l, l, l, l,
                      l, l, l, l, l, l, l, l, l, l, l )
   assert( is_function( f ) )
   assert( returns( 22, f, 3 ) )
@@ -100,7 +108,7 @@ local function test_compose()
   if _VERSION ~= "Lua 5.1" then
     assert( resp( is_string, 4 )( debug.getupvalue( k, 1 ) ) )
     assert( resp( is_string, is_lt( 270 ) )( debug.getupvalue( m, 1 ) ) )
-    local ymul = curry( 2, function( a, b )
+    local ymul = fx.curry( 2, function( a, b )
       coroutine.yield( "ymul" )
       return a * b
     end )
@@ -108,21 +116,25 @@ local function test_compose()
       coroutine.yield( "yadd" )
       return a + b + c
     end
-    local y = compose( add( -3 ), ymul( 5 ), yadd )
+    local y = fx.compose( add( -3 ), ymul( 5 ), yadd )
     assert( yields( y, { 1,2,3 }, "yadd", {}, "ymul", {}, 27 ) )
   end
-  local n = compose( "x,y => x-3, y+4", "a,b,c=>a+c,b+c" )
+  local n = fx.compose( "x,y => x-3, y+4", "a,b,c=>a+c,b+c" )
   assert( returns( resp( 1,9 ), n, 1, 2, 3 ) )
-  assert( raises( is_like"bad argument #2", compose, a1, "x-", a1 ) )
-  assert( raises( is_like"bad argument #2", compose, a1, "=>x-y", a1 ) )
-  assert( raises( is_like"bad argument #2", compose, a1, " => x-y", a1 ) )
+  local m = fx.compose( "_, ... => ..." )
+  assert( returns( resp( 2,3 ), m, 1, 2, 3 ) )
+  assert( returns( is_function, fx.compose, a1, "=>x-y", a1 ) )
+  assert( returns( is_function, fx.compose, a1, " => x-y", a1 ) )
+  assert( raises( is_like"bad argument #2", fx.compose, a1, "x-", a1 ) )
+  assert( raises( is_like"bad argument #2", fx.compose, a1, "a.b => a", a1 ) )
+  assert( raises( is_like"bad argument #2", fx.compose, a1, "a,b => do return a end", a1 ) )
 end
 
 
 local function test_has()
-  local is_table_module = has"insert,remove,concat,sort"
-  local is_global_table = has"print|_VERSION;table###pairs"
-  local is_indexable = has"__index"
+  local is_table_module = fx.has"insert,remove,concat,sort"
+  local is_global_table = fx.has"print|_VERSION;table###pairs"
+  local is_indexable = fx.has"__index"
   assert( is_table_module( table ) )
   assert( not is_table_module( string ) )
   assert( is_global_table( _G ) )
@@ -130,181 +142,105 @@ local function test_has()
   assert( is_indexable( "" ) )
   assert( is_indexable( {} ) )
   assert( not is_indexable( false ) )
-  assert( has"__add"( 12 ) )
-  assert( not has"__add"( "" ) )
+  assert( fx.has"__add"( 12 ) )
+  assert( not fx.has"__add"( "" ) )
 end
 
 
 local function test_map()
-  local function dp( v, w ) return 2 * v + w end
-  assert( returns( is_eq{ 3,5,7,9,7,5,3,n=7 }, map, dp, numbers, 1 ) )
-  assert( returns( is_eq{ 3,5,7,9,7,5,3,1,n=8 }, map, dp, numbers2, 1 ) )
-  local function dpy( v, w )
-    coroutine.yield( "yield", v )
+  local function dp( v, w )
     return 2 * v + w
   end
-  if _VERSION ~= "Lua 5.1" then
-    assert( yields( map, { dpy,numbers,1 }, resp( "yield",1 ),
-                         {}, resp( "yield",2 ),
-                         {}, resp( "yield",3 ),
-                         {}, resp( "yield",4 ),
-                         {}, resp( "yield",3 ),
-                         {}, resp( "yield",2 ),
-                         {}, resp( "yield",1 ),
-                         {}, is_eq{ 3,5,7,9,7,5,3,n=7 } ) )
-  end
-  local function inc( x, v ) return x+v end
   local Identity_meta = {}
   local function Identity( x )
     return setmetatable( { x=x }, Identity_meta )
   end
-  Identity_meta["__map@fx"] = function( f, t, ... )
-    return Identity( f( t.x, ... ) )
-  end
-  assert( returns( is_eq( Identity( 27 ) ),
-                   map, inc, Identity( 17 ), 10 ) )
-  assert( returns( is_function, map, dp ) )
-  assert( returns( is_eq{ 3,5,7,9,7,5,3 }, xduce, map( dp ),
-                   appending( 1 ), {}, numbers, 1 ) )
-  assert( returns( is_eq{ 3,5,7,9,7,5,3 }, reduce,
-                   map( dp, appending( 1 ) ), {}, numbers, 1 ) )
-  assert( returns( is_eq{ 2,4,6,8,6,4,2,0 },
-                   xduce, map"_,y => 2*y", appending( 1 ), {},
-                   ipairs( numbers ) ) )
-  if _VERSION ~= "Lua 5.1" then
-    assert( yields( xduce, { map( dpy ),appending( 1 ),{},numbers,1 },
-                    resp( "yield",1 ),
-                    {}, resp( "yield",2 ),
-                    {}, resp( "yield",3 ),
-                    {}, resp( "yield",4 ),
-                    {}, resp( "yield",3 ),
-                    {}, resp( "yield",2 ),
-                    {}, resp( "yield",1 ),
-                    {}, is_eq{ 3,5,7,9,7,5,3 } ) )
-  end
+  Identity_meta.__index = {
+    map = function( self, f, ... )
+      return Identity( f( self.x, ... ) )
+    end
+  }
+  -- fx.map is curried
+  assert( returns( is_function, fx.map, dp ) )
+  -- fx.map works on normal sequences and .n sequences
+  assert( returns( is_eq{ 3,5,7,9,7,5,3,n=7 }, fx.map, dp, numbers, 1 ) )
+  assert( returns( is_eq{ 3,5,7,9,7,5,3,1,n=8 }, fx.map, dp, numbers2, 1 ) )
+  -- fx.map accepts string lambdas
+  assert( returns( is_eq{ 3,5,7,9,7,5,3,n=7 }, fx.map, "v,w => 2*v+w", numbers, 1 ) )
+  -- fx.map works on functors
+  assert( returns( is_eq( Identity( 44 ) ), fx.map, dp, Identity( 17 ), 10 ) )
+  -- fx.map works as a transducer
+  assert( returns( is_eq{ 3,5,7,9,7,5,3,n=7 }, fx.into, {}, fx.map( dp ), numbers, 1 ) )
+  assert( returns( is_eq{ 3,5,7,9,7,5,3,1,n=8 }, fx.into, {}, fx.map"_,y => 2*y+1", ipairs( numbers ) ) )
+  -- fx.map works on iterators
+  assert( returns( is_eq{ 3,5,7,9,7,5,3,1,n=8 }, icollect, 2, fx.map( "_,y => 2*y+1", ipairs( numbers ) ) ) )
 end
 
 
 local function test_filter()
-  local function rem( v, d, r )
-    return v % d == r
-  end
-  assert( returns( is_eq{ 2,4,2,n=3 }, filter, rem, numbers, 2, 0 ) )
-  assert( returns( is_eq{ 2,4,2,0,n=4 }, filter, rem, numbers2, 2, 0 ) )
-  local function remy( v, d, r )
-    coroutine.yield( "yield", v )
-    return v % d == r
-  end
-  if _VERSION ~= "Lua 5.1" then
-    assert( yields( filter, { remy,numbers,2,1 }, resp( "yield",1 ),
-                            {}, resp( "yield",2 ),
-                            {}, resp( "yield",3 ),
-                            {}, resp( "yield",4 ),
-                            {}, resp( "yield",3 ),
-                            {}, resp( "yield",2 ),
-                            {}, resp( "yield",1 ),
-                            {}, is_eq{ 1,3,3,1,n=4 } ) )
-  end
-  assert( returns( is_function, filter, rem ) )
-  assert( returns( is_eq{ 1,3,3,1 }, xduce, filter( rem ),
-                   appending( 1 ), {}, numbers, 2, 1 ) )
-  assert( returns( is_eq{ 1,3,3,1 }, reduce,
-                   filter( rem, appending( 1 ) ), {}, numbers, 2, 1 ) )
-  assert( returns( is_eq{ 2,4,2,0 }, xduce, filter"_,y => y%2==0",
-                   appending( 2 ), {}, ipairs( numbers ) ) )
-  if _VERSION ~= "Lua 5.1" then
-    assert( yields( xduce,
-                    { filter( remy ),appending( 1 ),{},numbers,2,1 },
-                    resp( "yield", 1 ),
-                    {}, resp( "yield",2 ),
-                    {}, resp( "yield",3 ),
-                    {}, resp( "yield",4 ),
-                    {}, resp( "yield",3 ),
-                    {}, resp( "yield",2 ),
-                    {}, resp( "yield",1 ),
-                    {}, is_eq{ 1,3,3,1 } ) )
-  end
+  local function rem( v, d, r ) return v % d == r end
+  -- fx.filter is curried
+  assert( returns( is_function, fx.filter, rem ) )
+  -- fx.filter works on normal sequences and .n sequences
+  assert( returns( is_eq{ 2,4,2,n=3 }, fx.filter, rem, numbers, 2, 0 ) )
+  assert( returns( is_eq{ 2,4,2,0,n=4 }, fx.reject, rem, numbers2, 2, 1 ) )
+  -- fx.filter accepts string lambdas
+  assert( returns( is_eq{ 2,4,2,n=3 }, fx.filter, "v,d,r => v%d == r", numbers, 2, 0 ) )
+  -- fx.filter works as a transducer
+  assert( returns( is_eq{ 1,3,3,1,n=4 }, fx.into, {}, fx.filter( rem ), numbers, 2, 1 ) )
+  assert( returns( is_eq{ 1,3,3,1,n=4 }, fx.into, {}, shift( fx.filter"v => v%2 == 1" ), ipairs( numbers ) ) )
+  -- fx.filter works on iterators
+  assert( returns( is_eq{ 2,4,2,0,n=4 }, icollect, 2, fx.filter( "_,y => y%2 == 0", ipairs( numbers ) ) ) )
 end
 
 
 local function test_take()
-  assert( returns( is_eq{ "a","b","c",n=3 }, take, 3, letters ) )
-  assert( returns( is_eq{ 1,2,3,n=3 }, take, 3, numbers2 ) )
   local function lt4( v ) return v < 4 end
-  assert( returns( is_eq{ 1,2,3,n=3 }, take, lt4, numbers ) )
-  assert( returns( is_eq{ 1,2,3,n=3 }, take, lt4, numbers2 ) )
-  assert( returns( is_eq{ 1,2,n=2 }, take, "x,y => x<y", numbers, 3 ) )
-  local function lt4y( v )
-    coroutine.yield( "yield", v )
-    return v < 4
-  end
-  if _VERSION ~= "Lua 5.1" then
-    assert( yields( take, { lt4y,numbers }, resp( "yield",1 ),
-                          {}, resp( "yield",2 ),
-                          {}, resp( "yield",3 ),
-                          {}, resp( "yield",4 ),
-                          {}, is_eq{ 1,2,3,n=3 } ) )
-  end
-  assert( returns( is_function, take, 2 ) )
-  assert( returns( is_function, take, lt4 ) )
-  assert( returns( is_eq{ "a","b" }, reduce,
-                   take( 2, appending( 1 ) ), {}, letters ) )
-  assert( returns( is_eq{ "a","b" }, xduce, take( 2 ), appending( 1 ),
-                   {}, letters ) )
-  assert( returns( is_eq{ 1,2 }, xduce, take( "x,y => x<y" ),
-                   appending( 1 ), {}, numbers, 3 ) )
-  assert( returns( is_eq{ 1,2,3 }, xduce, take( "_,y => y<4" ),
-                   appending( 2 ), {}, ipairs( numbers ) ) )
-  local function ones() return 1 end
-  assert( returns( is_eq{ 1,1,1 }, xduce, take( 3 ),
-                   appending( 1 ), {}, ones ) )
-  if _VERSION ~= "Lua 5.1" then
-    assert( yields( xduce, { take( lt4y ),appending( 1 ),{},numbers },
-                    resp( "yield", 1 ),
-                    {}, resp( "yield",2 ),
-                    {}, resp( "yield",3 ),
-                    {}, resp( "yield",4 ),
-                    {}, is_eq{ 1,2,3 } ) )
-  end
+  -- fx.take is curried
+  assert( returns( is_function, fx.take, 2 ) )
+  assert( returns( is_function, fx.take, lt4 ) )
+  -- fx.take works on normal sequences and .n sequences
+  assert( returns( is_eq{ "a","b","c",n=3 }, fx.take, 3, letters ) )
+  assert( returns( is_eq{ 1,2,3,n=3 }, fx.take, 3, numbers2 ) )
+  assert( returns( is_eq{ 1,2,3,n=3 }, fx.take, lt4, numbers ) )
+  assert( returns( is_eq{ 1,2,3,n=3 }, fx.take, lt4, numbers2 ) )
+  -- fx.take accepts string lambdas
+  assert( returns( is_eq{ 1,2,n=2 }, fx.take, "x,y => x < y", numbers, 3 ) )
+  -- fx.take works as a transducer
+  assert( returns( is_eq{ "a","b",n=2 }, fx.into, {}, fx.take( 2 ), letters ) )
+  assert( returns( is_eq{ "a","b",n=2 }, fx.into, {}, shift( fx.take( 2 ) ), ipairs( letters ) ) )
+  assert( returns( is_eq{ 1,2,n=2 }, fx.into, {}, fx.take"x,y => x < y", numbers, 3 ) )
+  assert( returns( is_eq{ 1,2,n=2 }, fx.into, {}, shift( fx.take"v => v < 3" ), ipairs( numbers ) ) )
+  -- fx.take works as a transducer on infinite sequences
+  assert( returns( is_eq{ 1,1,n=2 }, fx.into, {}, fx.take( 2 ), ones ) )
+  -- fx.take works on iterators
+  assert( returns( is_eq{ 1,2,3,n=3 }, icollect, 2, fx.take( 3, ipairs( numbers ) ) ) )
+  assert( returns( is_eq{ 1,2,3,n=3 }, icollect, 2, fx.take( "_,x => x < 4", ipairs( numbers ) ) ) )
+  -- fx.take works on infinite iterators
+  assert( returns( is_eq{ 1,1,1,n=3 }, icollect, 1, fx.take( 3, ones ) ) )
 end
 
 
 local function test_drop()
-  assert( returns( is_eq{ "d","e","f",n=3 }, drop, 3, letters ) )
-  assert( returns( is_eq{ 4,3,2,1,0,n=5 }, drop, 3, numbers2 ) )
   local function lt( x, y ) return x < y end
-  assert( returns( is_eq{ 4,3,2,1,n=4 }, drop, lt, numbers, 4 ) )
-  assert( returns( is_eq{ 4,3,2,1,0,n=5 }, drop, lt, numbers2, 4 ) )
-  assert( returns( is_eq{ 4,3,2,1,n=4 }, drop, "x,y => x<y", numbers, 4 ) )
-  local function lty( x, y )
-    coroutine.yield( "yield", x )
-    return x < y
-  end
-  if _VERSION ~= "Lua 5.1" then
-    assert( yields( drop, { lty,numbers,4 }, resp( "yield",1 ),
-                          {}, resp( "yield",2 ),
-                          {}, resp( "yield",3 ),
-                          {}, resp( "yield",4 ),
-                          {}, is_eq{ 4,3,2,1,n=4 } ) )
-  end
-  assert( returns( is_function, drop, 2 ) )
-  assert( returns( is_function, drop, lt ) )
-  assert( returns( is_eq{ "e","f" }, xduce, drop( 4 ), appending( 1 ),
-                   {}, letters ) )
-  assert( returns( is_eq{ "e","f" }, reduce,
-                   drop( 4, appending( 1 ) ), {}, letters ) )
-  assert( returns( is_eq{ 4,3,2,1 }, xduce, drop( "x,y => x<y" ),
-                   appending( 1 ), {}, numbers, 4 ) )
-  assert( returns( is_eq{ 4,3,2,1,0 }, xduce, drop( "_,y => y<4" ),
-                   appending( 2 ), {}, ipairs( numbers ) ) )
-  if _VERSION ~= "Lua 5.1" then
-    assert( yields( xduce, { drop( lty ),appending( 1 ),{},numbers,4 },
-                    resp( "yield", 1 ),
-                    {}, resp( "yield",2 ),
-                    {}, resp( "yield",3 ),
-                    {}, resp( "yield",4 ),
-                    {}, is_eq{ 4,3,2,1 } ) )
-  end
+  -- fx.drop is curried
+  assert( returns( is_function, fx.drop, 2 ) )
+  assert( returns( is_function, fx.drop, lt ) )
+  -- fx.drop work on normal sequences and .n sequences
+  assert( returns( is_eq{ "d","e","f",n=3 }, fx.drop, 3, letters ) )
+  assert( returns( is_eq{ 4,3,2,1,0,n=5 }, fx.drop, 3, numbers2 ) )
+  assert( returns( is_eq{ 4,3,2,1,n=4 }, fx.drop, lt, numbers, 4 ) )
+  assert( returns( is_eq{ 4,3,2,1,0,n=5 }, fx.drop, lt, numbers2, 4 ) )
+  -- fx.drop accepts string lambdas
+  assert( returns( is_eq{ 4,3,2,1,n=4 }, fx.drop, "x,y => x<y", numbers, 4 ) )
+  -- fx.drop works as a transducer
+  assert( returns( is_eq{ "e","f",n=2 }, fx.into, {}, fx.drop( 4 ), letters ) )
+  assert( returns( is_eq{ "e","f","g",n=3 }, fx.into, {}, shift( fx.drop( 4 ) ), ipairs( letters ) ) )
+  assert( returns( is_eq{ 4,3,2,1,n=4 }, fx.into, {}, fx.drop"x,y => x < y", numbers, 4 ) )
+  assert( returns( is_eq{ 4,3,2,1,0,n=5 }, fx.into, {}, shift( fx.drop"v => v < 4" ), ipairs( numbers ) ) )
+  -- fx.drop works on iterators
+  assert( returns( is_eq{ 4,3,2,1,0,n=5 }, icollect, 2, fx.drop( 3, ipairs( numbers ) ) ) )
+  assert( returns( is_eq{ 4,3,2,1,0,n=5 }, icollect, 2, fx.drop( "_,x => x < 4", ipairs( numbers ) ) ) )
 end
 
 
@@ -315,55 +251,165 @@ local function test_reduce()
   local function b( s, _, x )
     return s+x, x > 2 and fx._
   end
-  assert( returns( 9, reduce, a, 0, numbers, 1 ) )
-  assert( returns( 6, reduce, b, 0, ipairs( numbers ) ) )
-  assert( returns( 16, reduce, "s,x => s+x", 0, numbers ) )
-  assert( returns( is_function, reduce, a ) )
-  assert( returns( is_function, reduce, a, 0 ) )
-  if _VERSION ~= "Lua 5.1" then
-    local function y1( s, x, y )
-      coroutine.yield( "yield", x )
-      return s+x+y
-    end
-    assert( yields( reduce, { y1,0,numbers,1 }, resp( "yield",1 ),
-                            {}, resp( "yield",2 ),
-                            {}, resp( "yield",3 ),
-                            {}, resp( "yield",4 ),
-                            {}, resp( "yield",3 ),
-                            {}, resp( "yield",2 ),
-                            {}, resp( "yield",1 ),
-                            {}, 23 ) )
-    assert( yields( reduce, { y1,0,numbers2,1 }, resp( "yield",1 ),
-                            {}, resp( "yield",2 ),
-                            {}, resp( "yield",3 ),
-                            {}, resp( "yield",4 ),
-                            {}, resp( "yield",3 ),
-                            {}, resp( "yield",2 ),
-                            {}, resp( "yield",1 ),
-                            {}, resp( "yield",0 ),
-                            {}, 24 ) )
-    local function y2( s, x )
-      coroutine.yield( "yield", x )
-      return s+x
-    end
-    local function yiter( limit )
-      limit = limit or 3
-      return function( _, var )
-        var = var + 1
-        if var <= limit then
-          coroutine.yield( "iyield", var )
-          return var
-        end
-      end, nil, 0
-    end
-    assert( yields( reduce,
-                    { y2,0,yiter( 3 ) }, resp( "iyield",1 ),
-                    {}, resp( "yield",1 ),
-                    {}, resp( "iyield", 2 ),
-                    {}, resp( "yield", 2 ),
-                    {}, resp( "iyield", 3 ),
-                    {}, resp( "yield", 3 ),
-                    {}, 6 ) )
+  local function c( s, x, y )
+    return s+x+y
   end
+  local tx = {
+    init = function( self ) self.x = 2 end,
+    step = function( self, state, x, y )
+      return state + x + y + self.x
+    end,
+    finish = function( _, state ) return state + 1 end,
+  }
+  -- fx.reduce is curried
+  assert( returns( is_function, fx.reduce, a ) )
+  assert( returns( is_function, fx.reduce, a, 0 ) )
+  -- fx.reduce works on normal sequences and .n sequences
+  assert( returns( 23, fx.reduce, c, 0, numbers, 1 ) )
+  assert( returns( 9, fx.reduce, a, 0, numbers2, 1 ) )
+  -- fx.reduce works on normal sequences and .n sequences with transformers
+  assert( returns( 38, fx.reduce, tx, 0, numbers, 1 ) )
+  assert( returns( 41, fx.reduce, tx, 0, numbers2, 1 ) )
+  -- fx.reduce works on iterators
+  assert( returns( 6, fx.reduce, b, 0, ipairs( numbers ) ) )
+  assert( returns( 52, fx.reduce, c, 0, ipairs( numbers ) ) )
+  -- fx.reduce works on iterators with transformers
+  assert( returns( 69, fx.reduce, tx, 0, ipairs( numbers2 ) ) )
+  -- fx.reduce accepts string lambdas
+  assert( returns( 16, fx.reduce, "s,x => s+x", 0, numbers ) )
+end
+
+
+local function test_transduce()
+  local tx = {
+    init = function( self ) self.x = 2 end,
+    step = function( self, state, x, y )
+      return state + x + y + self.x
+    end,
+    finish = function( _, state ) return state + 1 end,
+  }
+  local function rd( state, x, y )
+    return state + x + y
+  end
+  local even = fx.filter"k => k % 2 == 0"
+  -- fx.transduce is curried
+  assert( returns( is_function, fx.transduce, even ) )
+  assert( returns( is_function, fx.transduce, even, tx ) )
+  -- fx.transduce works on normal sequences and .n sequences
+  assert( returns( 11, fx.transduce, even, rd, 0, numbers, 1 ) )
+  assert( returns( 12, fx.transduce, even, rd, 0, numbers2, 1 ) )
+  -- fx.transduce works on normal sequences and .n sequences with transformers
+  assert( returns( 18, fx.transduce, even, tx, 0, numbers, 1 ) )
+  assert( returns( 21, fx.transduce, even, tx, 0, numbers2, 1 ) )
+  -- fx.transduce works on iterators
+  assert( returns( 28, fx.transduce, even, rd, 0, ipairs( numbers ) ) )
+  -- fx.transduce works on iterators with transformers
+  assert( returns( 37, fx.transduce, even, tx, 0, ipairs( numbers2 ) ) )
+  -- fx.transduce accepts string lambdas
+  assert( returns( 8, fx.transduce, even, "s,x => s+x", 0, numbers ) )
+end
+
+
+local function test_into()
+  local even = fx.filter"k => k % 2 == 0"
+  -- fx.into is curried
+  assert( returns( is_function, fx.into, {} ) )
+  assert( returns( is_function, fx.into, {}, even ) )
+  -- fx.into works on normal sequences and .n sequences
+  assert( returns( is_eq{ 2,4,2,n=3 }, fx.into, {}, even, numbers ) )
+  assert( returns( is_eq{ 2,4,2,0,n=4 }, fx.into, {}, even, numbers2 ) )
+  assert( returns( is_eq{ 2,4,2,n=3 }, fx.into, { n=0 }, even, numbers ) )
+  assert( returns( is_eq{ 2,4,2,0,n=4 }, fx.into, { n=0 }, even, numbers2 ) )
+  -- fx.into works on iterators
+  assert( returns( is_eq{ 2,4,6,8,n=4 }, fx.into, {}, even, ipairs( numbers ) ) )
+  assert( returns( is_eq{ 2,4,6,8,n=4 }, fx.into, {}, even, ipairs( numbers2 ) ) )
+  -- fx.into works on non-empty destinations
+  assert( returns( is_eq{ nil,2,4,2,n=4 }, fx.into, { n=1 }, even, numbers ) )
+  assert( returns( is_eq{ nil,2,4,2,0,n=5 }, fx.into, { n=1 }, even, numbers2 ) )
+  assert( returns( is_eq{ 1,2,4,2,n=4 }, fx.into, { 1,n=1 }, even, numbers ) )
+  assert( returns( is_eq{ 1,2,4,2,0,n=5 }, fx.into, { 1,n=1 }, even, numbers2 ) )
+end
+
+
+local function test_all()
+  local a, b = { 1, 2, 3, n=3 }, { 1, 2, 3 }
+  local function lt( x, y ) return x < y end
+  -- fx.all is curried
+  assert( returns( is_function, fx.all, lt ) )
+  -- fx.all works on normal sequences and .n sequences
+  assert( returns( true, fx.all, lt, a, 4 ) )
+  assert( returns( true, fx.all, lt, b, 4 ) )
+  assert( returns( false, fx.all, lt, numbers, 4 ) )
+  assert( returns( false, fx.all, lt, numbers2, 4 ) )
+  -- fx.all accepts string lambdas
+  assert( returns( true, fx.all, "x,y => x < y", a, 4 ) )
+  -- fx.all works as a transducer
+  assert( returns( is_eq{ true,n=1 }, fx.into, {}, fx.all( lt ), a, 4 ) )
+  assert( returns( is_eq{ true,n=1 }, fx.into, {}, shift( fx.all"v => v < 4" ), ipairs( a ) ) )
+  assert( returns( is_eq{ false,n=1 }, fx.into, {}, fx.all( lt ), numbers, 4 ) )
+  assert( returns( is_eq{ false,n=1 }, fx.into, {}, shift( fx.all"v => v < 4" ), ipairs( numbers ) ) )
+  -- fx.all works as a transducer on infinite sequences
+  assert( returns( { false,n=1 }, fx.into, {}, fx.all"v => v > 2", ones ) )
+  -- fx.all works on iterators
+  assert( returns( true, fx.all, "_,v => v < 4", ipairs( a ) ) )
+  assert( returns( false, fx.all, "_,v => v < 4", ipairs( numbers ) ) )
+  -- fx.all works on infinite iterators
+  assert( returns( false, fx.all, "v => v > 2", ones ) )
+end
+
+
+local function test_none()
+  local a, b = { 1, 2, 3, n=3 }, { 1, 2, 3 }
+  local function gt( x, y ) return x > y end
+  -- fx.none is curried
+  assert( returns( is_function, fx.none, gt ) )
+  -- fx.none works on normal sequences and .n sequences
+  assert( returns( true, fx.none, gt, a, 3 ) )
+  assert( returns( true, fx.none, gt, b, 3 ) )
+  assert( returns( false, fx.none, gt, numbers, 3 ) )
+  assert( returns( false, fx.none, gt, numbers2, 3 ) )
+  -- fx.none accepts string lambdas
+  assert( returns( true, fx.none, "x,y => x > y", a, 3 ) )
+  -- fx.none works as a transducer
+  assert( returns( is_eq{ true,n=1 }, fx.into, {}, fx.none( gt ), a, 3 ) )
+  assert( returns( is_eq{ true,n=1 }, fx.into, {}, shift( fx.none"v => v > 3" ), ipairs( a ) ) )
+  assert( returns( is_eq{ false,n=1 }, fx.into, {}, fx.none( gt ), numbers, 3 ) )
+  assert( returns( is_eq{ false,n=1 }, fx.into, {}, shift( fx.none"v => v > 3" ), ipairs( numbers ) ) )
+  -- fx.none works as a transducer on infinite sequences
+  assert( returns( { false,n=1 }, fx.into, {}, fx.none"v => v < 2", ones ) )
+  -- fx.none works on iterators
+  assert( returns( true, fx.none, "_,v => v > 3", ipairs( a ) ) )
+  assert( returns( false, fx.none, "_,v => v > 3", ipairs( numbers ) ) )
+  -- fx.none works on infinite iterators
+  assert( returns( false, fx.none, "v => v < 2", ones ) )
+end
+
+
+local function test_any()
+  local a, b = { 1, 2, 3, n=3 }, { 1, 2, 3 }
+  local function eq( x, y )
+    return x == y
+  end
+  -- fx.any is curried
+  assert( returns( is_function, fx.any, eq ) )
+  -- fx.any works on normal sequences and .n sequences
+  assert( returns( false, fx.any, eq, a, 4 ) )
+  assert( returns( false, fx.any, eq, b, 4 ) )
+  assert( returns( true, fx.any, eq, numbers, 4 ) )
+  assert( returns( true, fx.any, eq, numbers2, 4 ) )
+  -- fx.any accepts string lambdas
+  assert( returns( true, fx.any, "x,y => x == y", a, 3 ) )
+  -- fx.any works as a transducer
+  assert( returns( is_eq{ false,n=1 }, fx.into, {}, fx.any( eq ), a, 4 ) )
+  assert( returns( is_eq{ false,n=1 }, fx.into, {}, shift( fx.any"v => v == 4" ), ipairs( a ) ) )
+  assert( returns( is_eq{ true,n=1 }, fx.into, {}, fx.any( eq ), numbers, 4 ) )
+  assert( returns( is_eq{ true,n=1 }, fx.into, {}, shift( fx.any"v => v == 4" ), ipairs( numbers ) ) )
+  -- fx.any works as a transducer on infinite sequences
+  assert( returns( { true,n=1 }, fx.into, {}, fx.any"v => v < 2", ones ) )
+  -- fx.any works on iterators
+  assert( returns( false, fx.any, "_,v => v == 4", ipairs( a ) ) )
+  assert( returns( true, fx.any, "_,v => v == 4", ipairs( numbers ) ) )
+  -- fx.any works on infinite iterators
+  assert( returns( true, fx.any, "v => v < 2", ones ) )
 end
 

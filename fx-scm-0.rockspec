@@ -18,7 +18,8 @@ dependencies = {
 build = {
   type = "builtin",
   modules = {
-    ["fx"]                   = "fx.c",
+    ["fx"]        = "fx.c",
+    ["fx.optics"] = "fx/optics.lua",
 --[[
     ["fx.functors"]          = "fx/functors.lua",
     ["fx.functors.const"]    = "fx/functors/const.lua",
@@ -29,8 +30,12 @@ build = {
     ["fx.functors.identity"] = "fx/functors/identity.lua",
     ["fx.functors.maybe"]    = "fx/functors/maybe.lua",
     ["fx.functors.table"]    = "fx/functors/table.lua",
-    ["fx.lenses"]            = "fx/lenses.lua",
 --]]
+  },
+  install = {
+    lua = {
+      ["fx"]  = "fx.lua",
+    }
   }
 }
 

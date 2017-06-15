@@ -51,7 +51,7 @@ local function fmap( self, f )
     return Right( f( self:get() ) )
   end
 end
-Left.fmap, Right.fmap = fmap, fmap
+Left.map, Right.map = fmap, fmap
 
 
 local function pure( v )

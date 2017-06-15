@@ -1,6 +1,6 @@
 #!/usr/bin/lua
 
-local fx = require( "fx" )()
+local compose = require( "fx" ).compose
 local g = require( "fx.glue" )
 
 
@@ -39,33 +39,12 @@ local function test_vtransform()
 end
 
 
-local function test_vdup()
-  assert( returns( is_function, g.vdup, 1 ) )
-  assert( returns( resp( 1,1,2,3,4 ), compose( g.vdup( 1 ), f ) ) )
-  assert( returns( resp( 1,2,2,3,4 ), compose( g.vdup( 2 ), f ) ) )
-  assert( returns( resp( 1,2,3,2,3,4 ), compose( g.vdup( 2, 2 ), f ) ) )
-  assert( returns( resp( 1,2,3,4,4 ), compose( g.vdup( -1 ), f ) ) )
-  assert( returns( resp( 1,2,3,4,nil,nil ), compose( g.vdup( 5 ), f ) ) )
-  assert( returns( resp( 1,2,3,4,nil,4,nil ), compose( g.vdup( -1, 2 ), f ) ) )
-end
-
-
 local function test_vinsert()
   assert( returns( is_function, g.vinsert, nil, "a" ) )
   assert( returns( resp( 1,2,3,4,"a","b" ), compose( g.vinsert( nil, "a", "b" ), f ) ) )
   assert( returns( resp( "a","b",1,2,3,4 ), compose( g.vinsert( 1, "a", "b" ), f ) ) )
   assert( returns( resp( 1,2,3,"a","b",4 ), compose( g.vinsert( -1, "a", "b" ), f ) ) )
   assert( returns( resp( 1,2,3,4,nil,"a","b" ), compose( g.vinsert( 6, "a", "b" ), f ) ) )
-end
-
-
-local function test_vremove()
-  assert( returns( is_function, g.vremove, -1 ) )
-  assert( returns( resp( 1,2,3 ), compose( g.vremove( -1 ), f ) ) )
-  assert( returns( resp( 1,2,3 ), compose( g.vremove( -1, 2 ), f ) ) )
-  assert( returns( resp( 1,2,3,4 ), compose( g.vremove( 5, 2 ), f ) ) )
-  assert( returns( resp( 3,4 ), compose( g.vremove( 1, 2 ), f ) ) )
-  assert( returns( resp( 1,4 ), compose( g.vremove( 2, 2 ), f ) ) )
 end
 
 
@@ -96,24 +75,5 @@ local function test_vrotate()
   assert( returns( resp( 1,2,3,4 ), compose( g.vrotate( 2, 3 ), f ) ) )
   assert( returns( resp( 1,4,2,3 ), compose( g.vrotate( 2, 4 ), f ) ) )
   assert( returns( resp( 1,3,4,2 ), compose( g.vrotate( 2, -4 ), f ) ) )
-end
-
-
-local function test_vtake()
-  assert( returns( is_function, g.vtake, 1 ) )
-  assert( returns( resp(), compose( g.vtake( 0 ), f ) ) )
-  assert( returns( resp( 1 ), compose( g.vtake( 1 ), f ) ) )
-  assert( returns( resp( 1,2 ), compose( g.vtake( 2 ), f ) ) )
-  assert( returns( resp( 1,2,3 ), compose( g.vtake( -2 ), f ) ) )
-  assert( returns( resp( 1,2,3,4,nil ), compose( g.vtake( 5 ), f ) ) )
-end
-
-
-local function test_vnot()
-  assert( returns( is_function, g.vnot, 1 ) )
-  assert( returns( resp( false,2,3,4 ), compose( g.vnot( 1 ), f ) ) )
-  assert( returns( resp( 1,false,3,4 ), compose( g.vnot( 2 ), f ) ) )
-  assert( returns( resp( 1,2,3,false ), compose( g.vnot( -1 ), f ) ) )
-  assert( returns( resp( 1,2,3,4,true ), compose( g.vnot( 5 ), f ) ) )
 end
 

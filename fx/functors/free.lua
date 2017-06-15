@@ -38,7 +38,7 @@ local free_fmap_dispatch = {
   Impure = function( self, f )
     local v, g = self[ 1 ], self[ 2 ]
     return setmetatable( { v, function( x )
-      return g( x ):fmap( f )
+      return g( x ):map( f )
     end }, IMeta )
   end,
   Pure = function( self, f )
@@ -49,7 +49,7 @@ local free_fmap_dispatch = {
 local function free_fmap( self, f )
   return self:switch( free_fmap_dispatch, f )
 end
-Impure.fmap, Pure.fmap = free_fmap, free_fmap
+Impure.map, Pure.map = free_fmap, free_fmap
 
 
 local free_apply_dispatch = {
@@ -60,7 +60,7 @@ local free_apply_dispatch = {
     end }, IMeta )
   end,
   Pure = function( self, x )
-    return x:fmap( self[ 1 ] )
+    return x:map( self[ 1 ] )
   end,
 }
 

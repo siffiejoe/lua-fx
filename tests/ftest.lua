@@ -1,7 +1,7 @@
 #!/usr/bin/lua
 
 package.path = "../?.lua;"..package.path
-local fx = require( "fx" )()
+local fx = require( "fx" )
 local F = require( "fx.functors" )
 
 local Just, Nothing = require( "fx.functors.maybe" )()
@@ -49,7 +49,7 @@ end
 
 
 -- safe table indexing with Maybe monad
-local get = curry( 2, function( key, tab )
+local get = fx.curry( 2, function( key, tab )
   local val = tab[ key ]
   if val == nil then
     return Nothing
@@ -59,7 +59,7 @@ local get = curry( 2, function( key, tab )
 end )
 
 -- same with Either monad (include error message)
-local getE = curry( 2, function( key, tab )
+local getE = fx.curry( 2, function( key, tab )
   local val = tab[ key ]
   if val == nil then
     return Left( "no field '"..tostring( key ).."'" )
@@ -69,7 +69,7 @@ local getE = curry( 2, function( key, tab )
 end )
 
 -- use Option type derived from Free monad
-local getO = curry( 2, function( key, tab )
+local getO = fx.curry( 2, function( key, tab )
   local val = tab[ key ]
   if val == nil then
     return none
@@ -93,18 +93,18 @@ local D = {
 }
 
 
-local firstAddressStreet = compose( map( string.upper ),
-                                    F.bind( get"street" ),
-                                    F.bind( head ),
-                                    F.bind( get"addresses" ) )
-local firstAddressStreetE = compose( F.fmap( string.upper ),
-                                     F.bind( getE"street" ),
-                                     F.bind( headE ),
-                                     F.bind( getE"addresses" ) )
-local firstAddressStreetO = compose( F.fmap( string.upper ),
-                                     F.bind( getO"street" ),
-                                     F.bind( headO ),
-                                     F.bind( getO"addresses" ) )
+local firstAddressStreet = fx.compose( fx.map( string.upper ),
+                                       F.bind( get"street" ),
+                                       F.bind( head ),
+                                       F.bind( get"addresses" ) )
+local firstAddressStreetE = fx.compose( F.fmap( string.upper ),
+                                        F.bind( getE"street" ),
+                                        F.bind( headE ),
+                                        F.bind( getE"addresses" ) )
+local firstAddressStreetO = fx.compose( F.fmap( string.upper ),
+                                        F.bind( getO"street" ),
+                                        F.bind( headO ),
+                                        F.bind( getO"addresses" ) )
 
 print( "using Maybe ..." )
 print( "", firstAddressStreet( Just( A ) ) )
@@ -136,8 +136,8 @@ print( "other stuff ..." )
 print( Const( "abc" ) % string.upper )
 print( Identity( "abc" ) % string.upper )
 
-local mul = curry( 2, function( a, b ) return a * b end )
-local add = curry( 2, function( a, b ) return a + b end )
+local mul = fx.curry( 2, function( a, b ) return a * b end )
+local add = fx.curry( 2, function( a, b ) return a + b end )
 local function add3( a, b, c ) return a + b + c end
 local function add4( a, b, c, d ) return a + b + c + d end
 

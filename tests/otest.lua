@@ -2,7 +2,7 @@
 
 package.path = "../?.lua;"..package.path
 require( "fx" )()
-require( "fx.lenses" )()
+require( "fx.optics" )()
 local serpent = require( "serpent" )
 
 
@@ -63,22 +63,14 @@ local newfriend = {
 local replace = curry( 3, function( p, r, s )
   return (s:gsub( p, r ))
 end )
-local add = curry( 2, function( a, b ) return a + b end )
-local concat = curry( 2, function( a, b ) return a .. b end )
-local function isfemale( _, t ) return t.sex == "f" end
-local function isstring( _, v ) return type( v ) == "string" end
-local function sendEmail( addr )
-  print( "emailing", addr )
-  return addr
-end
 
 -- create primitive lenses
 local L = {
-  friends = tablelens"friends",
-  email = tablelens"email",
-  name = tablelens"name",
+  friends = tableprism"friends",
+  email = tableprism"email",
+  name = tableprism"name",
 }
-L.firstFriend = compose( L.friends, tablelens( 1 ) )
+L.firstFriend = compose( L.friends, tableprism( 1 ) )
 L.firstFriendEmail = compose( L.firstFriend, L.email )
 
 -- query/modify data structure:
@@ -91,5 +83,6 @@ p( "set friends to empty array", set( L.friends, {}, user ) )
 p( "query first friend", view( L.firstFriend, user ) )
 p( "set first friend", set( L.firstFriend, newfriend, user ) )
 p( "change email of first friend", over( L.firstFriendEmail, string.upper, user ) )
+p( "change email of nonexistent friend", over( L.firstFriendEmail, string.upper, set( L.friends, {}, user ) ) )
 p( "original user is unchanged", user )
 

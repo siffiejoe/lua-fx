@@ -1,4 +1,4 @@
-local fx = require( "fx" )
+local fx = require( "fx.core" )
 local pairs = assert( pairs )
 
 
@@ -12,27 +12,44 @@ local function lens( getter, setter )
       if doupdate then
         return (setter( x, f( getter( x ), true ) ))
       else
-        return f( getter( x ), false )
+        return (f( getter( x ), false ))
       end
     end
   end
 end
 
 
-local function tablelens( key )
+local function prism( getter, setter )
+  return function( f )
+    return function( x, doupdate )
+      local a = getter( x )
+      if doupdate then
+        if a == nil then return x, true end
+        local b, unchanged = f( a, true )
+        if unchanged then return x end
+        return (setter( x, b ))
+      else
+        if a == nil then return nil end
+        return f( a, false )
+      end
+    end
+  end
+end
+
+
+local function tableprism( key )
   local function getter( t )
-    if t ~= nil then return t[ key ] end
+    return t[ key ]
   end
   local function setter( t, nv )
-    t = t == nil and {} or t
     local nt = {}
-    for k,v in pairs( t ) do
+    for k, v in pairs( t ) do
       nt[ k ] = v
     end
     nt[ key ] = nv
     return nt
   end
-  return lens( getter, setter )
+  return prism( getter, setter )
 end
 
 
@@ -66,7 +83,8 @@ return setmetatable( {
   over = fx.curry( 3, over ),
   set = fx.curry( 3, set ),
   lens = lens,
-  tablelens = tablelens,
+  prism = prism,
+  tableprism = tableprism,
 }, { __call = function( M, t )
   t = t or _G
   for k,v in pairs( M ) do

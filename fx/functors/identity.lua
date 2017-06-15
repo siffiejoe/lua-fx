@@ -26,7 +26,7 @@ function Identity:get()
 end
 
 
-function Identity:fmap( f )
+function Identity:map( f )
   return Identity( f( self:get() ) )
 end
 
