@@ -10,7 +10,9 @@ local function lens( getter, setter )
   return function( f )
     return function( x, doupdate )
       if doupdate then
-        return (setter( x, f( getter( x ), true ) ))
+        local b, unchanged = f( getter( x ), true )
+        if unchanged then return x, true end
+        return (setter( x, b ))
       else
         return (f( getter( x ), false ))
       end
@@ -26,7 +28,7 @@ local function prism( getter, setter )
       if doupdate then
         if a == nil then return x, true end
         local b, unchanged = f( a, true )
-        if unchanged then return x end
+        if unchanged then return x, true end
         return (setter( x, b ))
       else
         if a == nil then return nil end

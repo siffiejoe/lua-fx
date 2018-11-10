@@ -20,7 +20,7 @@ typedef int lua_KContext;
   ((void)(ctx),(void)(cont),lua_call( L, na, nr ))
 
 #define lua_load( L, r, d, s, m ) \
-  ((void)m,lua_load( L, r, d, s ))
+  ((void)(m),lua_load( L, r, d, s ))
 
 #endif /* LUA_VERSION_NUM < 502 */
 
@@ -61,8 +61,7 @@ static void reverse( lua_State*, int, int );
 
 /* idx must be positive for this implementation! */
 static void lua_rotate( lua_State* L, int idx, int n ) {
-  int n_elems = 0;
-  n_elems = lua_gettop( L )-idx+1;
+  int n_elems = lua_gettop( L )-idx+1;
   if( n < 0 )
     n += n_elems;
   if( n > 0 && n < n_elems ) {
@@ -172,15 +171,6 @@ static int check_int( lua_State* L, int idx ) {
   return i;
 }
 #define opt_int( L, idx, def ) (luaL_opt( L, check_int, idx, def ))
-
-
-static int check_uint( lua_State* L, int idx ) {
-  lua_Integer i = luaL_checkinteger( L, idx );
-  luaL_argcheck( L, i >= 0 && i <= INT_MAX, idx,
-                "invalid 'n'" );
-  return i;
-}
-#define opt_uint( L, idx, def ) (luaL_opt( L, check_uint, idx, def ))
 
 
 static int get_index( lua_State* L, int uvidx ) {
