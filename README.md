@@ -161,6 +161,7 @@ always have an `.n` field set.
     end
     ```
 
+
 *   `fx.map( fun, t, ... ) ==> t2`
 
     `fx.map( fun, f ) ==> g`  (`f` and `g` are reducing functions)
@@ -297,9 +298,10 @@ always have an `.n` field set.
 
 ###                    Short Lambda Expressions                    ###
 
-In many circumstances the functions above accept a short lambda
-expression as a string instead of a real function. A short lambda
-expression has the following format:
+In many circumstances the functions above, and some glue functions
+described below, accept a short lambda expression as a string instead
+of a real function. A short lambda expression has the following
+format:
 ```lua
 <arg> [,<arg>]* => [<expr> [, <expr>]*]
 ```
@@ -308,7 +310,7 @@ function on-the-fly using `lua_load()`, so the following two lines are
 roughly equivalent:
 ```lua
 local f = fx.compose( "x,y => x+y, x*y" )
-local g = fx.compose( load( "return function(x,y) return x+y, x*y end" )() )
+local g = load( "return function(x,y) return x+y, x*y end" )()
 ```
 There is no caching/memoization going on, so be aware of the
 performance implications if you do this in a tight loop. In fact, it
@@ -317,8 +319,8 @@ compositions (see also the `fx.glue` module below).
 
 The following functions accept short lambda expressions: `fx.curry`,
 `fx.compose`, `fx.map` (first argument), `fx.filter` (first argument),
-`fx.take` (first argument), `fx.drop` (first argument), and
-`fx.reduce` (first argument).
+`fx.take` (first argument), `fx.drop` (first argument), `fx.reduce`
+(first argument), `fx.glue.vmap`, and `fx.glue.vtransform`.
 
 
 ###                         Glue Functions                         ###
@@ -383,7 +385,10 @@ The following glue functions are provided:
 
 Compile the C source file `fx.c` into a shared library (`fx.so`, or
 `fx.dll` on Windows) as usual for your platform and put it somewhere
-into your Lua `package.cpath`.
+into your Lua `package.cpath`. Copy `fx.lua` somewhere into your Lua
+`package.path`.
+
+You can also use LuaRocks.
 
 
 ##                             Contact                              ##
