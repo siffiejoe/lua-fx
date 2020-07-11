@@ -143,7 +143,12 @@ local function test_has()
   assert( is_indexable( {} ) )
   assert( not is_indexable( false ) )
   assert( fx.has"__add"( 12 ) )
-  assert( not fx.has"__add"( "" ) )
+  assert( not fx.has"__add"( {} ) )
+  if _VERSION < "Lua 5.4" then
+    assert( not fx.has"__add"( "" ) )
+  else
+    assert( fx.has"__add"( "" ) )
+  end
 end
 
 

@@ -183,14 +183,14 @@ do
       end
     elseif is_iterator( obj ) then
       if type( np ) == "number" then
-        local o_state, v = ...
+        local o_state, v, c = ...
         return function( s, var )
           local n = s[ 1 ]
           if n > 0 then
             s[ 1 ] = n - 1
             return obj( s[ 2 ], var )
           end
-        end, { np, o_state }, v
+        end, { np, o_state }, v, c
       else
         np = compose( np ) -- handle string lambda
         return function( s, var )
@@ -277,8 +277,8 @@ do
         }, transformer_meta )
       end
     elseif is_iterator( obj ) then
+      local o_state, v, c = ...
       if type( np ) == "number" then
-        local o_state, v = ...
         return function( s, var )
           local n, s2 = s[ 1 ], s[ 2 ]
           while n > 0 do
@@ -289,17 +289,16 @@ do
           end
           if n < 0 then return nil end
           return obj( s2, var )
-        end, { np, o_state }, v
+        end, { np, o_state }, v, c
       else
         np = compose( np ) -- handle string lambda
-        local o_state, v = ...
         return function( s, var )
           local p, s2 = s[ 1 ], s[ 2 ]
           if p then
             return drop_iterator_helper( s, p, obj, s2, obj( s2, var ) )
           end
           return obj( s2, var )
-        end, { np, o_state }, v
+        end, { np, o_state }, v, c
       end
     else -- assume it is a sequence
       local t, i, n = { n = 0 }, 1, len( obj )

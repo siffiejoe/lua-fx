@@ -53,7 +53,7 @@ another reducing function:
 ```lua
 function aTransducer( aReducer )
   return function( state, ... )
-    if p( ... ) then
+    if predicate( ... ) then
       return aReducer( state, f( ... ) )  -- pass (modified) data
     else
       return state  -- don't forward data
@@ -260,7 +260,7 @@ always have an `.n` field set.
     If the third argument is a function, `f`, `s`, and `var` are
     evaluated as iterator triplet and the function `fun` is called for
     every generated tuple `var_1, ..., var_n`, passing it after the
-    `state` value.
+    `state` value. On Lua 5.4, to-be-closed values are ignored.
 
     Otherwise the third argument is assumed to be a sequence(-like
     object) which is indexed using consecutive integers starting from
@@ -403,7 +403,7 @@ Comments and feedback are always welcome.
 **FX** is *copyrighted free software* distributed under the MIT
 license (the same license as Lua 5.1). The full license text follows:
 
-    FX (c) 2013-2017 Philipp Janda
+    FX (c) 2013-2020 Philipp Janda
 
     Permission is hereby granted, free of charge, to any person obtaining
     a copy of this software and associated documentation files (the
