@@ -12,6 +12,7 @@ local is_functor = fx.has"__index,map"
 
 local shift = compose"_, ... => ..."
 local complement = compose"x, ... => not x, ..."
+local ones = compose"=> 1"
 
 
 -- the definition of sequence length used by this module
@@ -351,12 +352,14 @@ do
 
   local function reduce( func, init, obj, ... )
     if is_iterator( obj ) then
-      local s, var = ...
-      if is_transformer( func ) then
-        func:init()
-        return reduce_xf_helper( func, init, obj, s, obj( s, var ) )
-      else
-        return reduce_f_helper( func, init, obj, s, obj( s, var ) )
+      for _ in ones, ... do
+        local s, var = ...
+        if is_transformer( func ) then
+          func:init()
+          return reduce_xf_helper( func, init, obj, s, obj( s, var ) )
+        else
+          return reduce_f_helper( func, init, obj, s, obj( s, var ) )
+        end
       end
     else -- assume it is a sequence
       local control
@@ -469,8 +472,10 @@ do
         all = true,
       }, all_meta )
     elseif is_iterator( obj ) then
-      local s, var = ...
-      return all_iterator_helper( predicate, obj, s, obj( s, var ) )
+      for _ in ones, ... do
+        local s, var = ...
+        return all_iterator_helper( predicate, obj, s, obj( s, var ) )
+      end
     else -- assume it is a sequence
       for i = 1, len( obj ) do
         if not predicate( obj[ i ], ... ) then
@@ -543,8 +548,10 @@ do
         any = false,
       }, any_meta )
     elseif is_iterator( obj ) then
-      local s, var = ...
-      return any_iterator_helper( predicate, obj, s, obj( s, var ) )
+      for _ in ones, ... do
+        local s, var = ...
+        return any_iterator_helper( predicate, obj, s, obj( s, var ) )
+      end
     else -- assume it is a sequence
       for i = 1, len( obj ) do
         if predicate( obj[ i ], ... ) then

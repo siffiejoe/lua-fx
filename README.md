@@ -85,6 +85,30 @@ takes precedence, and the table may contain holes. Resulting tables
 always have an `.n` field set.
 
 
+###                 To-Be-Closed Values in Lua 5.4                 ###
+
+This library supports the the new for-loop protocol in Lua 5.4 with
+the to-be-closed value on a best effort basis. Functions taking and
+returning iterator triplets (quadruplets) might throw errors (in
+particular memory and invalid argument errors) before the to-be-closed
+value reaches the for-loop. In cases where this is not acceptable,
+special steps have to be taken:
+```lua
+do
+  local f, s, var, c <close> = io.lines("input.txt")
+  for line in fx.filter("v => #v > 0", f, s, var) do
+    -- do something
+  end
+end
+```
+instead of the more idiomatic (and shorter, and version agnostic)
+```lua
+for line in fx.filter("v => #v > 0", io.lines("input.txt")) do
+  -- do something
+end
+```
+
+
 ##                             Reference                            ##
 
 *   `fx.has( s ) ==> f`
@@ -260,7 +284,7 @@ always have an `.n` field set.
     If the third argument is a function, `f`, `s`, and `var` are
     evaluated as iterator triplet and the function `fun` is called for
     every generated tuple `var_1, ..., var_n`, passing it after the
-    `state` value. On Lua 5.4, to-be-closed values are ignored.
+    `state` value.
 
     Otherwise the third argument is assumed to be a sequence(-like
     object) which is indexed using consecutive integers starting from
